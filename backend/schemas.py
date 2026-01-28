@@ -14,7 +14,9 @@ class TaskBase(BaseModel):
     title: str = Field(..., description="The title of the task.")
     energy_cost: int = Field(..., ge=1, le=10, description="The cognitive load required, from 1 (Trivial) to 10 (Brain Drain).")
     context: ContextEnum = Field(..., description="The context or category of the task.")
+    priority: Optional[str] = Field("Medium", description="Priority level: 'High', 'Medium', 'Low'.")
     deadline: Optional[datetime] = Field(None, description="The deadline for the task.")
+    scheduled_date: Optional[datetime] = Field(None, description="The date this task is scheduled for.")
     status: Optional[str] = Field("todo", description="Current status: 'todo', 'in_progress', 'done'.")
 
 class TaskCreate(TaskBase):
@@ -61,3 +63,9 @@ class IntegrationResponse(BaseModel):
     action_taken: str
     task_id: Optional[int] = None
     new_balance: Optional[int] = None
+
+class ChatRequest(BaseModel):
+    message: str
+
+class ChatResponse(BaseModel):
+    response: str

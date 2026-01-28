@@ -6,12 +6,14 @@ import { X, Sparkles, Calendar as CalendarIcon, Clock } from "lucide-react";
 import { useUI } from "@/context/UIContext";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { createTask, ContextEnum } from "@/lib/api";
 
 const CONTEXTS = [
-    { id: 'deep_work', label: 'Deep Work', color: 'bg-indigo-100 text-indigo-700 border-indigo-200' },
-    { id: 'admin', label: 'Admin', color: 'bg-slate-100 text-slate-700 border-slate-200' },
-    { id: 'errand', label: 'Errand', color: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
-    { id: 'meeting', label: 'Meeting', color: 'bg-amber-100 text-amber-700 border-amber-200' },
+    { id: 'deep_work', label: 'Deep Work', apiValue: ContextEnum.DEEP_WORK, color: 'bg-indigo-100 text-indigo-700 border-indigo-200' },
+    { id: 'admin', label: 'Admin', apiValue: ContextEnum.ADMIN, color: 'bg-slate-100 text-slate-700 border-slate-200' },
+    { id: 'errand', label: 'Errand', apiValue: ContextEnum.ERRAND, color: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
+    { id: 'meeting', label: 'Meeting', apiValue: ContextEnum.MEETING, color: 'bg-amber-100 text-amber-700 border-amber-200' },
 ];
 
 export function AddTaskModal() {
@@ -20,6 +22,8 @@ export function AddTaskModal() {
     const [energy, setEnergy] = useState(5);
     const [context, setContext] = useState("deep_work");
     const [date, setDate] = useState<Date>(new Date());
+
+    const queryClient = useQueryClient();
 
     // Reset state when opened
     useEffect(() => {
@@ -30,6 +34,19 @@ export function AddTaskModal() {
             setDate(new Date());
         }
     }, [isTaskModalOpen]);
+
+    const mutation = useMutation({
+        mutationFn: createTask,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['tasks'] });
+            // console.log("Task scheduled!"); // Toast placeholder
+            closeTaskModal();
+        },
+        onError: (error) => {
+            console.error("Failed to create task", error);
+            alert("Failed to create task. Is the backend running?");
+        }
+    });
 
     const getEnergyColor = (val: number) => {
         if (val <= 3) return "bg-emerald-500";
@@ -52,8 +69,16 @@ export function AddTaskModal() {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        console.log("Creating Task:", { title, energy, context, date });
-        closeTaskModal();
+
+        const selectedContext = CONTEXTS.find(c => c.id === context)?.apiValue || ContextEnum.DEEP_WORK;
+
+        mutation.mutate({
+            title,
+            energy_cost: energy,
+            context: selectedContext,
+            deadline: date.toISOString(),
+            status: "todo"
+        });
     };
 
     return (
@@ -96,23 +121,24 @@ export function AddTaskModal() {
                                         style={{ width: `${(energy / 10) * 100}%` }}
                                     />
                                 </div>
+                                {/* Invisible larger hit area */}
                                 <input
                                     type="range"
                                     min="1"
                                     max="10"
                                     value={energy}
                                     onChange={(e) => setEnergy(parseInt(e.target.value))}
-                                    className="w-full opacity-0 cursor-pointer absolute -mt-4 h-6" // Hack to make clickable area larger but invisible over custom bar
-                                    style={{ marginTop: '-12px' }}
+                                    className="w-full opacity-0 cursor-pointer absolute -mt-4 h-6"
+                                    style={{ marginTop: '-12px', zIndex: 10 }}
                                 />
-                                {/* Re-implement standard range input for better accessiblity/usability if custom one is tricky */}
+                                {/* Visual Slider Thumb (Input) */}
                                 <input
                                     type="range"
                                     min="1"
                                     max="10"
                                     value={energy}
                                     onChange={(e) => setEnergy(parseInt(e.target.value))}
-                                    className="w-full h-2 bg-transparent appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:border [&::-webkit-slider-thumb]:border-slate-200 [&::-webkit-slider-thumb]:mt-[-6px]"
+                                    className="w-full h-2 bg-transparent appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:border [&::-webkit-slider-thumb]:border-slate-200 [&::-webkit-slider-thumb]:mt-[-6px] relative z-20"
                                 />
                             </div>
 
@@ -159,9 +185,13 @@ export function AddTaskModal() {
 
                             <button
                                 type="submit"
-                                className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg font-medium shadow-sm transition-colors"
+                                disabled={mutation.isPending}
+                                className={cn(
+                                    "bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg font-medium shadow-sm transition-colors",
+                                    mutation.isPending && "opacity-70 cursor-not-allowed"
+                                )}
                             >
-                                Add to Schedule
+                                {mutation.isPending ? "Scheduling..." : "Add to Schedule"}
                             </button>
                         </div>
                     </form>

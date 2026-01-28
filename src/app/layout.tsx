@@ -6,6 +6,7 @@ import { FocusProvider } from "@/context/FocusContext";
 import { FocusOverlay } from "@/components/focus/FocusOverlay";
 import { UIProvider } from "@/context/UIContext";
 import { AddTaskModal } from "@/components/tasks/AddTaskModal";
+import Providers from "./providers";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -22,13 +23,15 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <FocusProvider>
-          <UIProvider>
-            <FocusOverlay />
-            <AddTaskModal />
-            <AppShell>{children}</AppShell>
-          </UIProvider>
-        </FocusProvider>
+        <Providers>
+          <FocusProvider>
+            <UIProvider>
+              <FocusOverlay />
+              <AddTaskModal />
+              <AppShell>{children}</AppShell>
+            </UIProvider>
+          </FocusProvider>
+        </Providers>
       </body>
     </html>
   );

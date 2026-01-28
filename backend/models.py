@@ -18,7 +18,9 @@ class Task(Base):
     energy_cost = Column(Integer, nullable=False)
     context = Column(String, nullable=False) # Storing as string for simplicity in SQLite, can use SAEnum in Postgres
     status = Column(String, default="todo")
+    priority = Column(String, default="Medium") # High, Medium, Low
     deadline = Column(DateTime, nullable=True)
+    scheduled_date = Column(DateTime, nullable=True) # For Auto-Scheduler
     created_at = Column(DateTime, default=datetime.utcnow)
 
 class Email(Base):

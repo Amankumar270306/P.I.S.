@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import models
 import schemas
@@ -165,3 +165,53 @@ def log_energy(payload: schemas.EnergyTransaction, db: Session = Depends(get_db)
     db.commit()
     
     return {"action_taken": "energy_updated", "new_balance": new_balance}
+
+# --- Auto-Scheduler ---
+
+import logic.scheduler as scheduler
+from datetime import date
+
+@app.post("/schedule/auto-plan", summary="Auto-Optimize Schedule")
+def auto_plan(db: Session = Depends(get_db)):
+    """
+    AI-driven scheduling. Rearranges tasks based on energy, deadline, and priority.
+    """
+    # 1. Fetch Candidates (Todo tasks)
+    tasks = db.query(models.Task).filter(models.Task.status == "todo").all()
+    
+    # 2. Run Algorithm
+    # Mock daily limit, ideally fetch from EnergyLog
+    scheduled, backlog = scheduler.optimize_schedule(tasks, daily_limit=40)
+    
+    # 3. Apply Changes
+    today = date.today()
+    tomorrow = today + timedelta(days=1)
+    
+    for t in scheduled:
+        t.scheduled_date = today
+        db.add(t)
+        
+    for t in backlog:
+        # Push to backlog/tomorrow (or just clear scheduled_date)
+        t.scheduled_date = tomorrow
+        db.add(t)
+        
+    db.commit()
+    
+    return {
+        "scheduled_count": len(scheduled),
+        "backlog_count": len(backlog),
+        "message": "Schedule optimized successfully."
+    }
+
+# --- AI Agent Chat ---
+
+import agent.chat as agent_chat
+
+@app.post("/agent/chat", response_model=schemas.ChatResponse, summary="Chat with P.I.S. Agent")
+def chat_endpoint(payload: schemas.ChatRequest, db: Session = Depends(get_db)):
+    """
+    Ask the AI agent questions about your schedule or energy.
+    """
+    response_text = agent_chat.chat_with_agent(payload.message, db)
+    return {"response": response_text}
