@@ -30,40 +30,40 @@ export default function TasksPage() {
     };
 
     return (
-        <div className="h-[calc(100vh-2rem)] flex flex-col">
-            <header className="mb-6 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto py-6 px-4 h-[calc(100vh-2rem)] flex flex-col">
+            <header className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-slate-900">Tasks</h1>
-                    <p className="text-slate-500 mt-1">Manage and track your energy-based tasks.</p>
+                    <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Tasks</h1>
+                    <p className="text-slate-500 text-sm mt-1">Manage and track your energy-based tasks.</p>
                 </div>
                 <div className="flex items-center gap-3">
                     {/* View Switcher */}
-                    <div className="flex p-1 bg-slate-100 rounded-lg border border-slate-200">
+                    <div className="flex p-1 bg-slate-100/80 rounded-lg border border-slate-200/60">
                         <button
                             onClick={() => setView('board')}
                             className={cn(
-                                "p-2 rounded-md transition-all flex items-center gap-2 text-sm font-medium",
-                                view === 'board' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                                "p-1.5 rounded-md transition-all flex items-center gap-2 text-xs font-medium",
+                                view === 'board' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
                             )}
                         >
-                            <LayoutTemplate className="size-4" />
+                            <LayoutTemplate className="size-3.5" />
                             Board
                         </button>
                         <button
                             onClick={() => setView('matrix')}
                             className={cn(
-                                "p-2 rounded-md transition-all flex items-center gap-2 text-sm font-medium",
-                                view === 'matrix' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                                "p-1.5 rounded-md transition-all flex items-center gap-2 text-xs font-medium",
+                                view === 'matrix' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
                             )}
                         >
-                            <LayoutGrid className="size-4" />
+                            <LayoutGrid className="size-3.5" />
                             Matrix
                         </button>
                     </div>
 
                     <button
                         onClick={() => setIsAddTaskOpen(true)}
-                        className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-sm"
+                        className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm shadow-indigo-200"
                     >
                         <Plus className="size-4" />
                         <span>Add Task</span>
@@ -71,7 +71,7 @@ export default function TasksPage() {
                 </div>
             </header>
 
-            <div className="flex-1 min-h-0">
+            <div className="flex-1 min-h-0 bg-white/50 rounded-xl border border-slate-200/60 shadow-sm overflow-hidden backdrop-blur-sm">
                 {view === 'board' ? (
                     <TaskBoard initialTasks={tasks} />
                 ) : (

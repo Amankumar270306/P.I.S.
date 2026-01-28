@@ -139,9 +139,11 @@ export function ProductivityHeatmap() {
                                         rx={2}
                                         onMouseEnter={(e) => {
                                             setHoveredDay(day);
-                                            // Calculate relative position for tooltip
-                                            // This is tricky inside SVG. We might handle tooltip outside.
-                                            // Simple trick: allow mouse event to populate state, render absolute div outside.
+                                            const rect = e.currentTarget.getBoundingClientRect();
+                                            setTooltipPos({
+                                                x: rect.left + rect.width / 2,
+                                                y: rect.top
+                                            });
                                         }}
                                         onMouseLeave={() => setHoveredDay(null)}
                                         onClick={() => console.log("Filter by date:", day.date)}
@@ -152,34 +154,19 @@ export function ProductivityHeatmap() {
                     ))}
                 </svg>
 
-                {/* Tooltip */}
+                {/* Floating Tooltip */}
                 {hoveredDay && (
                     <div
-                        className="absolute z-50 pointer-events-none bg-slate-900 text-white text-xs px-2 py-1.5 rounded shadow-lg whitespace-nowrap -translate-x-1/2 -translate-y-full mt-[-8px]"
+                        className="fixed z-50 pointer-events-none bg-slate-900 text-white text-xs px-2 py-1.5 rounded-lg shadow-xl border border-slate-700 whitespace-nowrap -translate-x-1/2 -translate-y-full mt-[-6px]"
                         style={{
-                            // Positioning logic is elusive without exact coords. 
-                            // Easier approach: render standard title for minimum viable, 
-                            // OR use a fixed position floating tooltip that follows mouse or snaps to header?
-                            // Let's assume standard position for now like "top center" of the graph container or similar?
-                            // No, let's just use top/left 0 and translate? 
-                            // Actually, let's just render a sticky info bar at the bottom or top of the graph on hover?
-                            // Or simpler: Just rely on the header to show "Jan 28: 38 Energy" when hovering? 
-                            // GitHub does this above the graph sometimes or as a tooltip.
-                            // Let's try to center it via CSS grid trick or just leave it for now.
-                            // Better: Render a discrete element below/above the title.
-                            // Requirement says "Tooltip".
-                            // Let's use `title` attribute for native browser tooltip first for robustness, 
-                            // but adding the requirement's text.
+                            left: tooltipPos.x,
+                            top: tooltipPos.y
                         }}
                     >
-                        {/* Placeholder structure if we had coords */}
-                    </div>
-                )}
-
-                {/* Fallback/Better Tooltip via Header State? */}
-                {hoveredDay && (
-                    <div className="absolute top-0 right-0 bg-slate-800 text-white text-xs px-2 py-1 rounded pointer-events-none shadow-xl transform translate-y-[-50%]">
-                        <strong>{format(hoveredDay.date, "MMM d")}</strong>: {hoveredDay.energySpent} Energy ({getIntensityLabel(hoveredDay.energySpent)})
+                        <div className="font-semibold">{format(hoveredDay.date, "EEEE, MMM d, yyyy")}</div>
+                        <div className="text-[10px] text-slate-300">
+                            {hoveredDay.energySpent} Energy ({getIntensityLabel(hoveredDay.energySpent)})
+                        </div>
                     </div>
                 )}
             </div>

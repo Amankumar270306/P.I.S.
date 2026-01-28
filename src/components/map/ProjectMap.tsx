@@ -14,6 +14,7 @@ import ReactFlow, {
     Node,
     Panel,
     Position,
+    MarkerType,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import dagre from 'dagre';
@@ -82,14 +83,14 @@ export function ProjectMap() {
     // Layout initial nodes
     const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
         initialNodes,
-        initialEdges
+        initialEdges.map(e => ({ ...e, markerEnd: { type: MarkerType.ArrowClosed } }))
     );
 
     const [nodes, setNodes, onNodesChange] = useNodesState(layoutedNodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState(layoutedEdges);
 
     const onConnect = useCallback(
-        (params: Connection) => setEdges((eds) => addEdge({ ...params, animated: true }, eds)),
+        (params: Connection) => setEdges((eds) => addEdge({ ...params, animated: true, markerEnd: { type: MarkerType.ArrowClosed } }, eds)),
         [setEdges]
     );
 
@@ -112,6 +113,8 @@ export function ProjectMap() {
                 onEdgesChange={onEdgesChange}
                 onConnect={onConnect}
                 nodeTypes={nodeTypes}
+                nodesDraggable={true}
+                nodesConnectable={true}
                 fitView
             >
                 <Controls />

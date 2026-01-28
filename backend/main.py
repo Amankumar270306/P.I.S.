@@ -15,6 +15,16 @@ app = FastAPI(
     version="1.0.0"
 )
 
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # --- CRUD Endpoints ---
 
 @app.post("/tasks/", response_model=schemas.TaskResponse, summary="Create a new task")
@@ -207,6 +217,7 @@ def auto_plan(db: Session = Depends(get_db)):
 # --- AI Agent Chat ---
 
 import agent.chat as agent_chat
+import uuid
 
 @app.post("/agent/chat", response_model=schemas.ChatResponse, summary="Chat with P.I.S. Agent")
 def chat_endpoint(payload: schemas.ChatRequest, db: Session = Depends(get_db)):
@@ -215,3 +226,81 @@ def chat_endpoint(payload: schemas.ChatRequest, db: Session = Depends(get_db)):
     """
     response_text = agent_chat.chat_with_agent(payload.message, db)
     return {"response": response_text}
+
+# --- Team Chat Endpoints ---
+
+from fastapi import WebSocket, WebSocketDisconnect
+import chat_ws
+import uuid
+
+@app.post("/chat/users", response_model=schemas.User)
+def create_chat_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    db_user = models.User(username=user.username, avatar_url=f"https://api.dicebear.com/7.x/avataaars/svg?seed={user.username}")
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+@app.get("/chat/users", response_model=List[schemas.User])
+def get_users(db: Session = Depends(get_db)):
+    return db.query(models.User).all()
+
+@app.get("/chat/channels", response_model=List[schemas.Channel])
+def get_channels(db: Session = Depends(get_db)):
+    # Simple implementation: Return all channels
+    # In real app: Return only channels user is part of
+    return db.query(models.Channel).all()
+
+@app.post("/chat/channels", response_model=schemas.Channel)
+def create_channel(channel: schemas.ChannelBase, db: Session = Depends(get_db)):
+    db_channel = models.Channel(name=channel.name, is_group=channel.is_group)
+    db.add(db_channel)
+    db.commit()
+    db.refresh(db_channel)
+    return db_channel
+
+@app.get("/chat/history/{channel_id}", response_model=List[schemas.Message])
+def get_chat_history(channel_id: uuid.UUID, db: Session = Depends(get_db)):
+    return db.query(models.Message).filter(models.Message.channel_id == channel_id).order_by(models.Message.created_at).all()
+
+@app.websocket("/ws/chat/{channel_id}/{user_id}")
+async def websocket_endpoint(websocket: WebSocket, channel_id: str, user_id: str, db: Session = Depends(get_db)):
+    await chat_ws.manager.connect(websocket, channel_id)
+    try:
+        while True:
+            data = await websocket.receive_json()
+            # data expects: { "content": "hello" }
+            
+            content = data.get("content")
+            if content:
+                # 1. Persist to DB
+                # Note: We need a new session context here usually for async, 
+                # but FastAPI dependency injection handles it for this scope if not async DB.
+                # Since SQLAlchemy with standard engine is blocking, we should be careful.
+                # For this prototype, we'll try direct usage. If it blocks event loop, we'd need run_in_executor.
+                
+                new_msg = models.Message(
+                    channel_id=uuid.UUID(channel_id),
+                    sender_id=uuid.UUID(user_id),
+                    content=content
+                )
+                db.add(new_msg)
+                db.commit()
+                db.refresh(new_msg)
+                
+                # 2. Broadcast with metadata
+                msg_response = {
+                    "id": str(new_msg.id),
+                    "content": new_msg.content,
+                    "sender_id": str(new_msg.sender_id),
+                    "created_at": new_msg.created_at.isoformat(),
+                    "channel_id": str(new_msg.channel_id)
+                }
+                
+                await chat_ws.manager.broadcast(msg_response, channel_id)
+                
+    except WebSocketDisconnect:
+        chat_ws.manager.disconnect(websocket, channel_id)
+    except Exception as e:
+        print(f"WS Error: {e}")
+        chat_ws.manager.disconnect(websocket, channel_id)

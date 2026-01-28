@@ -1,7 +1,10 @@
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional
+from pydantic import BaseModel, Field, EmailStr
+from typing import List, Optional
 from enum import Enum
 from datetime import datetime
+import uuid
 from uuid import UUID
 
 class ContextEnum(str, Enum):
@@ -69,3 +72,66 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     response: str
+
+# --- Team Chat Schemas ---
+
+class UserBase(BaseModel):
+    username: str
+
+class UserCreate(UserBase):
+    pass
+
+class User(UserBase):
+    id: uuid.UUID
+    avatar_url: Optional[str] = None
+    
+    class Config:
+        from_attributes = True
+
+class MessageBase(BaseModel):
+    content: str
+
+class MessageCreate(MessageBase):
+    channel_id: uuid.UUID
+    sender_id: uuid.UUID
+
+class Message(MessageBase):
+    id: uuid.UUID
+    channel_id: uuid.UUID
+    sender_id: uuid.UUID
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+class ChannelBase(BaseModel):
+    name: Optional[str] = None
+    is_group: bool = False
+
+class Channel(ChannelBase):
+    id: uuid.UUID
+    last_message: Optional[Message] = None # Helper for UI
+    
+    class Config:
+        from_attributes = True
+
+# --- Document Schemas ---
+
+class DocumentBase(BaseModel):
+    title: str
+    content: Optional[str] = ""
+
+class DocumentCreate(DocumentBase):
+    pass
+
+class DocumentUpdate(BaseModel):
+    title: Optional[str] = None
+    content: Optional[str] = None
+
+class Document(DocumentBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+    
+    class Config:
+        from_attributes = True

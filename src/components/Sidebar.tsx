@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Command, Inbox, FileText, Settings, Calendar, User, PanelLeftClose, PanelLeftOpen, ListTodo, LogOut, Network } from 'lucide-react';
+import { Command, Inbox, FileText, Settings, Calendar, User, PanelLeftClose, PanelLeftOpen, ListTodo, LogOut, Network, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DailyReviewModal } from './review/DailyReviewModal';
 
@@ -11,6 +11,7 @@ const navItems = [
     { name: 'Command Center', href: '/', icon: Command },
     { name: 'Inbox', href: '/inbox', icon: Inbox },
     { name: 'Tasks', href: '/tasks', icon: ListTodo },
+    { name: 'Chat', href: '/chat', icon: MessageSquare },
     { name: 'Project Map', href: '/map', icon: Network },
     { name: 'Calendar', href: '/calendar', icon: Calendar },
     { name: 'Brain', href: '/brain', icon: FileText },
@@ -36,8 +37,8 @@ export function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
             <div className="p-3">
                 <div className="mb-6 flex items-center justify-between px-2 py-2">
                     {!isCollapsed && (
-                        <h1 className="text-xl font-bold text-slate-900 truncate opacity-100 transition-opacity duration-300">
-                            App Name
+                        <h1 className="text-lg font-bold text-slate-900 leading-tight opacity-100 transition-opacity duration-300">
+                            Personal Intelligence Scheduler
                         </h1>
                     )}
                     <button

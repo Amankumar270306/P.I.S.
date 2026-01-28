@@ -72,4 +72,51 @@ export const chatAgent = async (message: string): Promise<{ response: string }> 
     return response.data;
 };
 
+// --- Chat API ---
+
+export interface ChatUser {
+    id: string;
+    username: string;
+    avatar_url: string;
+}
+
+export interface Channel {
+    id: string;
+    name: string;
+    is_group: boolean;
+}
+
+export interface ChatMessage {
+    id: string;
+    channel_id: string;
+    sender_id: string;
+    content: string;
+    created_at: string;
+}
+
+export const getChatUsers = async (): Promise<ChatUser[]> => {
+    const response = await api.get('/chat/users');
+    return response.data;
+};
+
+export const createChatUser = async (username: string): Promise<ChatUser> => {
+    const response = await api.post('/chat/users', { username });
+    return response.data;
+};
+
+export const getChannels = async (): Promise<Channel[]> => {
+    const response = await api.get('/chat/channels');
+    return response.data;
+};
+
+export const createChannel = async (name: string, is_group: boolean = false): Promise<Channel> => {
+    const response = await api.post('/chat/channels', { name, is_group });
+    return response.data;
+};
+
+export const getChatHistory = async (channelId: string): Promise<ChatMessage[]> => {
+    const response = await api.get(`/chat/history/${channelId}`);
+    return response.data;
+};
+
 export default api;
