@@ -59,12 +59,32 @@ export default function DocsPage() {
         }
     };
 
+    const handleGenerateDemo = async () => {
+        setIsLoading(true);
+        try {
+            const demoDocs = [
+                { title: "Project Alpha Strategy", content: "<h2>Visio Goals</h2><p>Our goal is to revolutionize the industry with AI-driven insights.</p>" },
+                { title: "Meeting Notes: Q1 Planning", content: "<h2>Attendees</h2><ul><li>Alice</li><li>Bob</li></ul><p>Next steps: define roadmap.</p>" },
+                { title: "Research: Neural Architectures", content: "<p>Deep learning models require significant compute...</p>" }
+            ];
+
+            for (const doc of demoDocs) {
+                await createDocument(doc.title, doc.content);
+            }
+            await loadDocuments();
+        } catch (error) {
+            console.error("Failed to generate demo docs", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const selectedDoc = documents.find(d => d.id === selectedDocId);
 
     return (
         <div className="flex h-screen overflow-hidden bg-slate-50">
             {/* Sidebar / Stack of Docs */}
-            <div className="w-64 bg-white border-r border-slate-200 flex flex-col">
+            <div className="w-64 bg-white border-r border-slate-200 flex flex-col shrink-0">
                 <div className="p-4 border-b border-slate-100 flex items-center justify-between">
                     <h2 className="font-bold text-slate-800 flex items-center gap-2">
                         <FileText className="size-5 text-indigo-600" />
@@ -83,9 +103,14 @@ export default function DocsPage() {
                     {isLoading ? (
                         <div className="text-center py-4 text-slate-400 text-sm">Loading stack...</div>
                     ) : documents.length === 0 ? (
-                        <div className="text-center py-8 text-slate-400 text-sm">
-                            <p>Empty brain.</p>
-                            <button onClick={handleCreateDoc} className="text-indigo-600 font-medium hover:underline mt-2">Create Doc</button>
+                        <div className="text-center py-8 text-slate-400 text-sm px-4">
+                            <p className="mb-4">Empty brain.</p>
+                            <button
+                                onClick={handleGenerateDemo}
+                                className="w-full py-2 px-3 text-xs bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 font-medium transition-colors border border-indigo-200"
+                            >
+                                Generate Demo Docs
+                            </button>
                         </div>
                     ) : (
                         documents.map(doc => (
@@ -118,10 +143,10 @@ export default function DocsPage() {
             </div>
 
             {/* Main Editing Area */}
-            <div className="flex-1 flex flex-col h-full overflow-hidden">
+            <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0">
                 {selectedDoc ? (
-                    <div className="flex-1 overflow-y-auto bg-white">
-                        <div className="max-w-4xl mx-auto px-8 py-12">
+                    <div className="flex-1 overflow-y-auto bg-white flex">
+                        <div className="flex-1 max-w-4xl mx-auto px-8 py-12">
                             {/* Header */}
                             <div className="flex items-center justify-between mb-8 group">
                                 <input
@@ -130,31 +155,33 @@ export default function DocsPage() {
                                     onChange={(e) => {
                                         const newTitle = e.target.value;
                                         setDocuments(docs => docs.map(d => d.id === selectedDoc.id ? { ...d, title: newTitle } : d));
-                                        // Auto-save title after delay could be added here
                                         updateDocument(selectedDoc.id, { title: newTitle });
                                     }}
                                     className="text-4xl font-bold text-slate-900 placeholder:text-slate-300 border-none focus:ring-0 p-0 bg-transparent w-full"
                                     placeholder="Untitled Document"
                                 />
-                                <div className="text-xs text-slate-400">
+                                <div className="text-xs text-slate-400 whitespace-nowrap ml-4">
                                     {isSaving ? "Saving..." : "Auto-saved"}
                                 </div>
                             </div>
 
                             {/* Editor */}
                             <div className="min-h-[500px]">
-                                {/* We pass initialContent and a custom save handler to Editor if we want real persistence inside the content. 
-                                    For now, let's stick to the current Editor which is self-contained state. 
-                                    Ideally, we prompt the user to IMPLEMENT content saving. 
-                                    I will wrap it to key it by doc ID so it resets. */}
-                                <Editor key={selectedDoc.id} />
-                                {/* NOTE: The Editor component currently has hardcoded content. 
-                                    Future Step: Pass `initialContent={selectedDoc.content}` and `onChange` to Editor. */}
+                                <Editor
+                                    key={selectedDoc.id}
+                                    initialContent={selectedDoc.content}
+                                    onChange={(content) => {
+                                        updateDocument(selectedDoc.id, { content });
+                                    }}
+                                />
                             </div>
                         </div>
+
+                        {/* Linked Tasks Sidebar - Restored */}
+                        <LinkedTasks />
                     </div>
                 ) : (
-                    <div className="flex-1 flex items-center justify-center text-slate-400">
+                    <div className="flex-1 flex items-center justify-center text-slate-400 bg-slate-50/50">
                         <div className="text-center">
                             <FileText className="size-16 mx-auto mb-4 opacity-20" />
                             <p>Select a document from the stack</p>

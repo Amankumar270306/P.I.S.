@@ -1,6 +1,4 @@
-"use client";
-
-import { Droppable } from "@hello-pangea/dnd";
+import { useDroppable } from "@dnd-kit/core";
 import { Task } from "@/types/task";
 import { DraggableTaskCard } from "./DraggableTaskCard";
 import { cn } from "@/lib/utils";
@@ -12,6 +10,10 @@ interface BoardColumnProps {
 }
 
 export function BoardColumn({ id, title, tasks }: BoardColumnProps) {
+    const { setNodeRef, isOver } = useDroppable({
+        id: id
+    });
+
     return (
         <div className="flex flex-col h-full bg-slate-50 rounded-xl border border-slate-200/60 overflow-hidden">
             <div className="p-4 border-b border-slate-200/60 flex justify-between items-center bg-white/50 backdrop-blur-sm">
@@ -21,23 +23,17 @@ export function BoardColumn({ id, title, tasks }: BoardColumnProps) {
                 </span>
             </div>
 
-            <Droppable droppableId={id}>
-                {(provided, snapshot) => (
-                    <div
-                        ref={provided.innerRef}
-                        {...provided.droppableProps}
-                        className={cn(
-                            "flex-1 p-3 transition-colors duration-200 overflow-y-auto min-h-[150px]",
-                            snapshot.isDraggingOver ? "bg-indigo-50/50" : ""
-                        )}
-                    >
-                        {tasks.map((task, index) => (
-                            <DraggableTaskCard key={task.id} task={task} index={index} />
-                        ))}
-                        {provided.placeholder}
-                    </div>
+            <div
+                ref={setNodeRef}
+                className={cn(
+                    "flex-1 p-3 transition-colors duration-200 overflow-y-auto min-h-[150px]",
+                    isOver ? "bg-indigo-50/50" : ""
                 )}
-            </Droppable>
+            >
+                {tasks.map((task, index) => (
+                    <DraggableTaskCard key={task.id} task={task} index={index} />
+                ))}
+            </div>
         </div>
     );
 }

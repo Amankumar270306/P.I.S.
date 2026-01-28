@@ -1,9 +1,19 @@
 "use client";
 
 import React, { useState } from "react";
-import { DragDropContext, DropResult } from "@hello-pangea/dnd";
+import {
+    DndContext,
+    DragOverlay,
+    DragEndEvent,
+    DragStartEvent,
+    useSensor,
+    useSensors,
+    PointerSensor
+} from "@dnd-kit/core";
+import { createPortal } from "react-dom";
 import { Task } from "@/types/task";
 import { BoardColumn } from "./BoardColumn";
+import { TaskCard } from "./TaskCard";
 
 interface TaskBoardProps {
     initialTasks: Task[];
@@ -11,6 +21,9 @@ interface TaskBoardProps {
 
 export function TaskBoard({ initialTasks }: TaskBoardProps) {
     const [tasks, setTasks] = useState<Task[]>(initialTasks);
+    const [activeId, setActiveId] = useState<string | null>(null);
+
+    const activeTask = tasks.find(t => t.id === activeId);
 
     const columns = {
         todo: tasks.filter(t => t.status === 'todo'),
@@ -18,47 +31,62 @@ export function TaskBoard({ initialTasks }: TaskBoardProps) {
         done: tasks.filter(t => t.status === 'done'),
     };
 
-    const handleDragEnd = (result: DropResult) => {
-        const { destination, source, draggableId } = result;
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8,
+            },
+        })
+    );
 
-        if (!destination) return;
+    const handleDragStart = (event: DragStartEvent) => {
+        setActiveId(event.active.id as string);
+    };
 
-        if (
-            destination.droppableId === source.droppableId &&
-            destination.index === source.index
-        ) {
-            return;
-        }
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+        setActiveId(null);
 
-        // Logic to update local state
-        // Since we are filtering derived state from a flat 'tasks' array, we just need to update the status of the moved task.
-        // NOTE: Real-world apps might need reordering logic within the column as well.
-        // For this MVP, we will just update the status, and basic array reordering.
+        if (!over) return;
 
-        const newTasks = Array.from(tasks);
-        const movedTaskIndex = newTasks.findIndex(t => t.id === draggableId);
-        if (movedTaskIndex === -1) return;
+        const taskId = active.id as string;
+        const newStatus = over.id as Task['status'];
+        const task = tasks.find(t => t.id === taskId);
 
-        const movedTask = { ...newTasks[movedTaskIndex] };
+        // If dropped in same column or invalid target, do nothing
+        if (!task || task.status === newStatus) return;
 
-        // Update status if moved to a different column
-        if (source.droppableId !== destination.droppableId) {
-            movedTask.status = destination.droppableId as Task['status'];
-        }
+        // Update Task Status
+        const updatedTask = { ...task, status: newStatus };
 
-        // Simple state update for now (reordering within same column for persistence is more complex with this flat structure)
-        // We will just update the task in the array.
-        newTasks[movedTaskIndex] = movedTask;
-        setTasks(newTasks);
+        // Update Local State
+        setTasks(prev => prev.map(t => t.id === taskId ? updatedTask : t));
+
+        // Note: Ideally we call an API update here or props callback
     };
 
     return (
-        <DragDropContext onDragEnd={handleDragEnd}>
+        <DndContext
+            sensors={sensors}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+        >
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-full min-h-[500px]">
                 <BoardColumn id="todo" title="To Do" tasks={columns.todo} />
                 <BoardColumn id="in-progress" title="In Progress" tasks={columns['in-progress']} />
                 <BoardColumn id="done" title="Done" tasks={columns.done} />
             </div>
-        </DragDropContext>
+
+            {typeof document !== 'undefined' && createPortal(
+                <DragOverlay>
+                    {activeTask ? (
+                        <div className="rotate-2 scale-105 shadow-2xl cursor-grabbing">
+                            <TaskCard task={activeTask} />
+                        </div>
+                    ) : null}
+                </DragOverlay>,
+                document.body
+            )}
+        </DndContext>
     );
 }
