@@ -144,10 +144,63 @@ export default function CalendarPage() {
                             {weekDays.map(day => {
                                 const dayEvents = events.filter(e =>
                                     format(e.startTime, "yyyy-MM-dd") === format(day, "yyyy-MM-dd")
-                                );
+                                ).sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
+
+                                const handleDragOver = (e: React.DragEvent) => {
+                                    e.preventDefault();
+                                    e.dataTransfer.dropEffect = "copy";
+                                };
+
+                                const handleDrop = (e: React.DragEvent) => {
+                                    e.preventDefault();
+                                    const data = e.dataTransfer.getData("application/json");
+                                    if (!data) return;
+
+                                    const task = JSON.parse(data);
+
+                                    // Calculate time from Y coordinate
+                                    const rect = e.currentTarget.getBoundingClientRect();
+                                    const y = e.clientY - rect.top + e.currentTarget.scrollTop;
+                                    const minutesFrom6AM = y; // Since 1px = 1min
+
+                                    const droppedDate = new Date(day);
+                                    droppedDate.setHours(6, 0, 0, 0); // Start at 6 AM
+                                    const startTime = new Date(droppedDate.getTime() + minutesFrom6AM * 60000);
+
+                                    // Snap to nearest 15 min
+                                    const remainder = startTime.getMinutes() % 15;
+                                    startTime.setMinutes(startTime.getMinutes() - remainder);
+
+                                    // Gap Calculation ("Liquid" fill)
+                                    // Find next event that starts AFTER this new start time
+                                    const nextEvent = dayEvents.find(ev => ev.startTime.getTime() > startTime.getTime());
+
+                                    let duration = 60; // Default 1 hour
+                                    if (nextEvent) {
+                                        const gapMinutes = (nextEvent.startTime.getTime() - startTime.getTime()) / 60000;
+                                        if (gapMinutes > 15 && gapMinutes < 180) { // Auto-fill if gap is reasonable (15m to 3h)
+                                            duration = gapMinutes;
+                                        }
+                                    }
+
+                                    const newEvent: CalendarEvent = {
+                                        id: Math.random().toString(36).substr(2, 9),
+                                        title: task.title,
+                                        startTime,
+                                        durationMinutes: duration,
+                                        energyCost: task.energy,
+                                    };
+
+                                    setEvents(prev => [...prev, newEvent]);
+                                };
 
                                 return (
-                                    <div key={day.toISOString()} className="flex-1 border-r border-slate-100 relative h-[1020px]">
+                                    <div
+                                        key={day.toISOString()}
+                                        className="flex-1 border-r border-slate-100 relative h-[1020px]"
+                                        onDragOver={handleDragOver}
+                                        onDrop={handleDrop}
+                                    >
                                         {/* 17 hours * 60px = 1020px */}
 
                                         {/* Background grid lines */}
@@ -156,9 +209,40 @@ export default function CalendarPage() {
                                         ))}
 
                                         {/* Events */}
-                                        {dayEvents.map(event => (
-                                            <CalendarEventComponent key={event.id} event={event} />
-                                        ))}
+                                        {dayEvents.map((event, index) => {
+                                            // Conflict / Context Switching Detection
+                                            // Check previous event
+                                            const prevEvent = index > 0 ? dayEvents[index - 1] : null;
+                                            let showConflict = false;
+
+                                            if (prevEvent) {
+                                                const prevEnd = new Date(prevEvent.startTime.getTime() + prevEvent.durationMinutes * 60000);
+                                                // If gap is small (< 15 mins) AND both are high energy (> 7)
+                                                // Actually spec says "drag... next to another". Let's assume adjacent or overlapping-ish.
+                                                // Simplification: if adjacent (within 15m) and both high energy.
+                                                const gap = (event.startTime.getTime() - prevEnd.getTime()) / 60000;
+                                                if (gap < 15 && event.energyCost > 7 && prevEvent.energyCost > 7) {
+                                                    showConflict = true;
+                                                }
+                                            }
+
+                                            return (
+                                                <div key={event.id}>
+                                                    <CalendarEventComponent event={event} />
+                                                    {showConflict && (
+                                                        <div
+                                                            className="absolute w-full h-2 z-20 pointer-events-none"
+                                                            style={{
+                                                                top: `${(event.startTime.getHours() - 6) * 60 + event.startTime.getMinutes() - 4}px`
+                                                            }}
+                                                        >
+                                                            <div className="w-full h-full bg-red-500/50 animate-pulse skew-x-12" />
+                                                            {/* "Jagged" representation simplified to skewed pulse for now */}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 );
                             })}

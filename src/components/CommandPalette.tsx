@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import * as Dialog from "@radix-ui/react-dialog";
 import { Command } from "cmdk";
 import { useRouter } from "next/navigation";
 import {
@@ -15,6 +16,7 @@ import {
     Laptop
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useUI } from "@/context/UIContext";
 
 export function CommandPalette() {
     const [open, setOpen] = React.useState(false);
@@ -32,6 +34,8 @@ export function CommandPalette() {
         return () => document.removeEventListener("keydown", down);
     }, []);
 
+    const { openTaskModal } = useUI();
+
     const runCommand = React.useCallback((command: () => void) => {
         setOpen(false);
         command();
@@ -44,6 +48,8 @@ export function CommandPalette() {
             label="Global Command Menu"
             className="fixed inset-0 z-50 bg-slate-900/20 backdrop-blur-sm flex items-start justify-center pt-[20vh]"
         >
+            <Dialog.Title className="sr-only">Global Command Menu</Dialog.Title>
+
             <div className="w-full max-w-lg bg-white rounded-xl shadow-2xl overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-100">
                 <Command.Input
                     placeholder="What do you want to do?"
@@ -88,7 +94,7 @@ export function CommandPalette() {
 
                     <Command.Group heading="Actions" className="text-xs font-medium text-slate-400 px-2 py-1.5 mb-1 mt-2">
                         <Command.Item
-                            onSelect={() => runCommand(() => console.log("Create New Task"))}
+                            onSelect={() => runCommand(() => openTaskModal())}
                             className="flex items-center gap-2 px-2 py-2 text-sm text-slate-700 rounded-lg aria-selected:bg-indigo-50 aria-selected:text-indigo-700 cursor-pointer"
                         >
                             <Plus className="size-4" />

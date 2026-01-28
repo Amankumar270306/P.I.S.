@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Panel, Group, Separator } from "react-resizable-panels";
 import { EmailList } from "@/components/inbox/EmailList";
 import { ReadingPane } from "@/components/inbox/ReadingPane";
 import { Email } from "@/types/email";
@@ -55,17 +56,24 @@ export default function InboxPage() {
     };
 
     return (
-        <div className="flex h-[calc(100vh-2rem)] overflow-hidden rounded-xl border border-slate-200 shadow-sm bg-white">
-            <div className="w-[30%] min-w-[300px] border-r border-slate-200">
-                <EmailList
-                    emails={emails}
-                    selectedEmailId={selectedEmailId}
-                    onSelectEmail={handleSelectEmail}
-                />
-            </div>
-            <div className="w-[70%] bg-slate-50">
-                <ReadingPane email={selectedEmail} />
-            </div>
+        <div className="h-[calc(100vh-2rem)] overflow-hidden rounded-xl border border-slate-200 shadow-sm bg-white">
+            <Group orientation="horizontal">
+                <Panel defaultSize={35} minSize={25} className="flex flex-col min-w-[300px]">
+                    <div className="h-full overflow-hidden border-r border-slate-200">
+                        <EmailList
+                            emails={emails}
+                            selectedEmailId={selectedEmailId}
+                            onSelectEmail={handleSelectEmail}
+                        />
+                    </div>
+                </Panel>
+
+                <Separator className="w-1 bg-slate-100 hover:bg-indigo-400 transition-colors cursor-col-resize active:bg-indigo-600 focus:outline-none focus:ring-1 focus:ring-indigo-500 z-10" />
+
+                <Panel defaultSize={65} className="bg-slate-50">
+                    <ReadingPane email={selectedEmail} />
+                </Panel>
+            </Group>
         </div>
     );
 }

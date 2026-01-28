@@ -8,11 +8,11 @@ interface EnergyMeterProps {
 export function EnergyMeter({ currentEnergy, maxEnergy = 40 }: EnergyMeterProps) {
     const percentage = Math.min(100, Math.max(0, (currentEnergy / maxEnergy) * 100));
 
-    let colorClass = "bg-green-500";
-    if (percentage >= 80) {
-        colorClass = "bg-red-500";
+    let colorClass = "bg-emerald-500";
+    if (percentage > 80) {
+        colorClass = "bg-rose-500";
     } else if (percentage >= 50) {
-        colorClass = "bg-yellow-500";
+        colorClass = "bg-amber-500";
     }
 
     return (

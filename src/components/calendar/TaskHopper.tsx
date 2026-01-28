@@ -21,6 +21,10 @@ export function TaskHopper() {
                         key={task.id}
                         className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm flex items-center gap-2 cursor-move hover:border-indigo-300 transition-colors"
                         draggable
+                        onDragStart={(e) => {
+                            e.dataTransfer.setData("application/json", JSON.stringify(task));
+                            e.dataTransfer.effectAllowed = "copy";
+                        }}
                     >
                         <GripVertical className="size-4 text-slate-400" />
                         <div className="flex-1 min-w-0">

@@ -1,5 +1,5 @@
 import { Zap } from 'lucide-react';
-import { Task } from '@/types/task';
+import { Task, TaskContext } from '@/types/task';
 import { cn } from '@/lib/utils';
 
 interface TaskCardProps {
@@ -7,10 +7,11 @@ interface TaskCardProps {
 }
 
 export function TaskCard({ task }: TaskCardProps) {
-    const contextColors = {
+    const contextColors: Record<TaskContext, string> = {
         Work: "bg-blue-100 text-blue-700",
-        Personal: "bg-purple-100 text-purple-700",
+        Personal: "bg-green-100 text-green-700",
         Errand: "bg-orange-100 text-orange-700",
+        Delegated: "bg-amber-100 text-amber-700",
     };
 
     return (

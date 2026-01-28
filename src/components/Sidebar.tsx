@@ -1,13 +1,17 @@
 "use client";
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Command, Inbox, FileText, Settings, Calendar, User, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { Command, Inbox, FileText, Settings, Calendar, User, PanelLeftClose, PanelLeftOpen, ListTodo, LogOut, Network } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { DailyReviewModal } from './review/DailyReviewModal';
 
 const navItems = [
     { name: 'Command Center', href: '/', icon: Command },
     { name: 'Inbox', href: '/inbox', icon: Inbox },
+    { name: 'Tasks', href: '/tasks', icon: ListTodo },
+    { name: 'Project Map', href: '/map', icon: Network },
     { name: 'Calendar', href: '/calendar', icon: Calendar },
     { name: 'Brain', href: '/brain', icon: FileText },
     { name: 'Settings', href: '/settings', icon: Settings },
@@ -20,6 +24,7 @@ interface SidebarProps {
 
 export function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
     const pathname = usePathname();
+    const [isReviewOpen, setIsReviewOpen] = useState(false);
 
     return (
         <aside
@@ -71,9 +76,28 @@ export function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
                 </nav>
             </div>
 
-            <div className="p-3 border-t border-slate-200">
+            <div className="p-3 border-t border-slate-200 space-y-3">
+                <button
+                    onClick={() => setIsReviewOpen(true)}
+                    className={cn(
+                        "w-full flex items-center gap-3 px-2 py-2 rounded-lg text-slate-600 hover:bg-indigo-50 hover:text-indigo-600 transition-colors group",
+                        isCollapsed ? "justify-center" : ""
+                    )}
+                    title={isCollapsed ? "Daily Review" : undefined}
+                >
+                    <div className="flex items-center justify-center size-5 shrink-0 text-slate-400 group-hover:text-indigo-600">
+                        <LogOut className="size-5" />
+                    </div>
+                    <span className={cn(
+                        "text-sm font-medium transition-all duration-300 whitespace-nowrap overflow-hidden",
+                        isCollapsed ? "opacity-0 w-0 hidden" : "opacity-100 w-auto"
+                    )}>
+                        End Day Review
+                    </span>
+                </button>
+
                 <div className={cn(
-                    "flex items-center gap-3 px-2 py-3 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer overflow-hidden whitespace-nowrap",
+                    "flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer overflow-hidden whitespace-nowrap",
                     isCollapsed ? "justify-center" : ""
                 )}>
                     <div className="flex items-center justify-center size-9 shrink-0 rounded-full bg-indigo-100 border border-indigo-200 text-indigo-600">
@@ -88,6 +112,8 @@ export function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
                     </div>
                 </div>
             </div>
+
+            <DailyReviewModal open={isReviewOpen} onOpenChange={setIsReviewOpen} />
         </aside>
     );
 }
