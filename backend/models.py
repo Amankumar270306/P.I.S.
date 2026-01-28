@@ -4,7 +4,7 @@ from sqlalchemy.dialects.postgresql import UUID
 import uuid
 import enum
 from datetime import datetime
-from .database import Base
+from database import Base
 
 # Define Enum for SQLAlchemy
 class ContextEnum(str, enum.Enum):

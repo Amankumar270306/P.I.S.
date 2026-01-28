@@ -120,3 +120,32 @@ export const getChatHistory = async (channelId: string): Promise<ChatMessage[]> 
 };
 
 export default api;
+
+// --- Document API ---
+
+export interface Document {
+    id: number;
+    title: string;
+    content: string;
+    created_at: string;
+    updated_at: string;
+}
+
+export const getDocuments = async (): Promise<Document[]> => {
+    const response = await api.get('/documents/');
+    return response.data;
+};
+
+export const createDocument = async (title: string, content: string = ""): Promise<Document> => {
+    const response = await api.post('/documents/', { title, content });
+    return response.data;
+};
+
+export const updateDocument = async (id: number, data: Partial<Document>): Promise<Document> => {
+    const response = await api.put(`/documents/${id}`, data);
+    return response.data;
+};
+
+export const deleteDocument = async (id: number): Promise<void> => {
+    await api.delete(`/documents/${id}`);
+};

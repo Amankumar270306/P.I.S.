@@ -101,6 +101,52 @@ def get_system_state(db: Session = Depends(get_db)):
         "overdue_tasks": overdue_tasks
     }
 
+# --- Document Endpoints ---
+
+@app.get("/documents/", response_model=List[schemas.Document], summary="List all documents")
+def read_documents(db: Session = Depends(get_db)):
+    return db.query(models.Document).all()
+
+@app.post("/documents/", response_model=schemas.Document, summary="Create a new document")
+def create_document(doc: schemas.DocumentCreate, db: Session = Depends(get_db)):
+    db_doc = models.Document(**doc.model_dump())
+    db.add(db_doc)
+    db.commit()
+    db.refresh(db_doc)
+    return db_doc
+
+@app.get("/documents/{doc_id}", response_model=schemas.Document, summary="Get a document")
+def read_document(doc_id: int, db: Session = Depends(get_db)):
+    db_doc = db.query(models.Document).filter(models.Document.id == doc_id).first()
+    if not db_doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    return db_doc
+
+@app.put("/documents/{doc_id}", response_model=schemas.Document, summary="Update a document")
+def update_document(doc_id: int, doc_update: schemas.DocumentUpdate, db: Session = Depends(get_db)):
+    db_doc = db.query(models.Document).filter(models.Document.id == doc_id).first()
+    if not db_doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    update_data = doc_update.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_doc, key, value)
+    
+    db.add(db_doc)
+    db.commit()
+    db.refresh(db_doc)
+    return db_doc
+
+@app.delete("/documents/{doc_id}", summary="Delete a document")
+def delete_document(doc_id: int, db: Session = Depends(get_db)):
+    db_doc = db.query(models.Document).filter(models.Document.id == doc_id).first()
+    if not db_doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    db.delete(db_doc)
+    db.commit()
+    return {"message": "Document deleted"}
+
 # --- Integration Endpoints ---
 
 @app.post("/integrations/outlook/webhook", response_model=schemas.IntegrationResponse, summary="Outlook Email Webhook")

@@ -7,7 +7,12 @@ import { Bold, Italic, ListTodo } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEffect, useState } from 'react';
 
-export function Editor() {
+export interface EditorProps {
+    initialContent?: string;
+    onChange?: (content: string) => void;
+}
+
+export function Editor({ initialContent, onChange }: EditorProps) {
     const [isMounted, setIsMounted] = useState(false);
 
     const editor = useEditor({
@@ -22,16 +27,10 @@ export function Editor() {
                 placeholder: 'Write something amazing...',
             }),
         ],
-        content: `
-      <h2>Project Overview</h2>
-      <p>This is a living document for the new initiative. We need to align on the core goals and deliverables.</p>
-      <ul data-type="taskList">
-        <li data-type="taskItem" data-checked="true">Define scope</li>
-        <li data-type="taskItem" data-checked="false">Assign resources</li>
-        <li data-type="taskItem" data-checked="false">Kickoff meeting</li>
-      </ul>
-      <p>Start typing to add more...</p>
-    `,
+        content: initialContent || '',
+        onUpdate: ({ editor }) => {
+            onChange?.(editor.getHTML());
+        },
         editorProps: {
             attributes: {
                 class: 'prose prose-slate max-w-none focus:outline-none min-h-[300px]',
