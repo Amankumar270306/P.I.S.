@@ -1,17 +1,40 @@
-from sqlalchemy import Column, String, Integer, DateTime
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Column, Integer, String, DateTime, Enum as SAEnum
 from database import Base
-import uuid
 from datetime import datetime
+import enum
+
+# Define Enum for SQLAlchemy
+class ContextEnum(str, enum.Enum):
+    DEEP_WORK = "DEEP_WORK"
+    ADMIN = "ADMIN"
+    MEETING = "MEETING"
+    ERRAND = "ERRAND"
 
 class Task(Base):
     __tablename__ = "tasks"
 
-    # We assume uuid-ossp extension is enabled in DB, but SQLAlchemy can generate UUIDs too
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(Integer, primary_key=True, index=True)
     title = Column(String, nullable=False)
-    status = Column(String, default="todo") # 'todo', 'in_progress', 'done', 'backlog'
-    energy_cost = Column(Integer)
-    context = Column(String)
-    # linked_email_id can be added similarly if needed for the backend logic
+    energy_cost = Column(Integer, nullable=False)
+    context = Column(String, nullable=False) # Storing as string for simplicity in SQLite, can use SAEnum in Postgres
+    status = Column(String, default="todo")
+    deadline = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+class Email(Base):
+    __tablename__ = "emails"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    subject = Column(String)
+    sender = Column(String)
+    is_processed = Column(Integer, default=0) # 0=False, 1=True boolean in sqlite
+    received_at = Column(DateTime, default=datetime.utcnow)
+
+class EnergyLog(Base):
+    __tablename__ = "energy_logs"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    date = Column(DateTime, default=datetime.utcnow)
+    capacity = Column(Integer, default=40)
+    used = Column(Integer, default=0)
+    reason = Column(String)
