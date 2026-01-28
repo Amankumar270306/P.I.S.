@@ -7,6 +7,7 @@ import { FocusOverlay } from "@/components/focus/FocusOverlay";
 import { UIProvider } from "@/context/UIContext";
 import { AddTaskModal } from "@/components/tasks/AddTaskModal";
 import Providers from "./providers";
+import { ChatWidget } from "@/components/ai/ChatWidget";
 
 const inter = Inter({ subsets: ["latin"] });
 

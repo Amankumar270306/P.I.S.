@@ -62,4 +62,14 @@ export const getSystemState = async (): Promise<SystemState> => {
     return response.data;
 };
 
+export const autoSchedule = async (): Promise<{ scheduled_count: number; backlog_count: number; message: string }> => {
+    const response = await api.post('/schedule/auto-plan');
+    return response.data;
+};
+
+export const chatAgent = async (message: string): Promise<{ response: string }> => {
+    const response = await api.post('/agent/chat', { message });
+    return response.data;
+};
+
 export default api;
