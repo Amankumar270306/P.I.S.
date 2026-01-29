@@ -13,7 +13,11 @@ interface TaskListProps {
 
 export function TaskList({ initialTasks }: TaskListProps) {
     const queryClient = useQueryClient();
+    const [tasks, setTasks] = useState<Task[]>(initialTasks);
     const [isOptimizing, setIsOptimizing] = useState(false);
+
+    const todayTasks = tasks;
+    const totalEnergy = tasks.reduce((acc, task) => acc + (task.energyCost || 0), 0);
 
     // Sync state with props if parent updates
     useEffect(() => {

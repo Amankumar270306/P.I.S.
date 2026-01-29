@@ -5,7 +5,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { X, Check } from "lucide-react";
 import { SmartTaskInput } from "@/components/inbox/SmartTaskInput";
 
-export function AddTaskDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+export function AddTaskDialog({ open, onOpenChange, onSubmit }: { open: boolean; onOpenChange: (open: boolean) => void; onSubmit?: (task: any) => void }) {
     return (
         <Dialog.Root open={open} onOpenChange={onOpenChange}>
             <Dialog.Portal>
@@ -21,7 +21,10 @@ export function AddTaskDialog({ open, onOpenChange }: { open: boolean; onOpenCha
                     </div>
 
                     <div className="py-4">
-                        <SmartTaskInput />
+                        <SmartTaskInput onSubmit={(task) => {
+                            onSubmit?.(task);
+                            onOpenChange(false);
+                        }} />
                     </div>
 
                     <Dialog.Close className="absolute top-4 right-4 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none disabled:pointer-events-none data-[state=open]:bg-slate-100 text-slate-500 hover:text-slate-900">

@@ -8,25 +8,50 @@ import { Plus, LayoutTemplate, LayoutGrid } from "lucide-react";
 import { Task } from "@/types/task";
 import { cn } from "@/lib/utils";
 
-// Mock Data
-const initialTasks: Task[] = [
-    { id: '1', title: 'Complete Project Board', status: 'in-progress', energyCost: 5, context: 'Work', priority: 'high' },
-    { id: '2', title: 'Review PRs', status: 'todo', energyCost: 3, context: 'Work', priority: 'medium' },
-    { id: '3', title: 'Buy Groceries', status: 'todo', energyCost: 2, context: 'Errand', priority: 'low' },
-    { id: '4', title: 'Schedule Dentist', status: 'todo', energyCost: 1, context: 'Personal', priority: 'low' },
-    { id: '5', title: 'Refactor Auth', status: 'done', energyCost: 8, context: 'Work', priority: 'high' },
-];
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getTasks, updateTask, createTask } from "@/lib/api";
+
+// Mock Data Removed - fetching from API
+
 
 type ViewMode = 'board' | 'matrix';
 
 export default function TasksPage() {
+    const queryClient = useQueryClient();
     const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
     const [view, setView] = useState<ViewMode>('board');
-    const [tasks, setTasks] = useState<Task[]>(initialTasks);
 
-    // Handler to update a single task (passed to MatrixView)
-    const handleTaskUpdate = (updatedTask: Task) => {
-        setTasks(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t));
+    // Fetch Tasks
+    const { data: tasks = [], isLoading } = useQuery({
+        queryKey: ['tasks'],
+        queryFn: () => getTasks()
+    });
+
+    // Update Task Mutation
+    const updateTaskMutation = useMutation({
+        mutationFn: (variables: { id: string; updates: Partial<Task> }) => updateTask(variables.id, variables.updates),
+        // Actually updateTask takes (id, updates). 
+        // Let's correct this inline wrapper or just use the function directly if args match?
+        // useMutation expects one variable.
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['tasks'] });
+        }
+    });
+
+    // Create Task Mutation
+    const createTaskMutation = useMutation({
+        mutationFn: (newTask: any) => createTask(newTask),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['tasks'] });
+            setIsAddTaskOpen(false);
+        }
+    });
+
+    // Handler to update a single task
+    const handleTaskUpdate = async (updatedTask: Task) => {
+        // Optimistic update could go here, for now just call API
+        await updateTask(updatedTask.id, updatedTask);
+        queryClient.invalidateQueries({ queryKey: ['tasks'] });
     };
 
     return (
@@ -79,7 +104,11 @@ export default function TasksPage() {
                 )}
             </div>
 
-            <AddTaskDialog open={isAddTaskOpen} onOpenChange={setIsAddTaskOpen} />
+            <AddTaskDialog
+                open={isAddTaskOpen}
+                onOpenChange={setIsAddTaskOpen}
+                onSubmit={(task) => createTaskMutation.mutate(task)}
+            />
         </div>
     );
 }

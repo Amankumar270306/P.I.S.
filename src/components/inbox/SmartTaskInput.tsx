@@ -4,7 +4,11 @@ import React, { useState, useRef, useEffect } from "react";
 import { Zap, CornerDownLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export function SmartTaskInput() {
+interface SmartTaskInputProps {
+    onSubmit?: (task: { title: string; priority: string; context: string; energyCost: number }) => void;
+}
+
+export function SmartTaskInput({ onSubmit }: SmartTaskInputProps) {
     const [value, setValue] = useState("");
     const [energySuggestion, setEnergySuggestion] = useState<number | null>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -104,6 +108,31 @@ export function SmartTaskInput() {
                     </div>
 
                     <button
+                        onClick={() => {
+                            if (!value.trim()) return;
+
+                            // Basic Parsing
+                            let priority = "medium";
+                            if (value.includes("!!")) priority = "high";
+
+                            let context = "Deep Work"; // Default
+                            const tagMatch = value.match(/#(\w+)/);
+                            if (tagMatch) context = tagMatch[1];
+
+                            // Remove tags/priority from title for cleaner display? 
+                            // Or keep them? Keeping them is simpler for now.
+                            // Actually cleaner title is nicer.
+                            const title = value.replace(/!!/g, "").replace(/#\w+/g, "").trim();
+
+                            onSubmit?.({
+                                title: title || value, // Fallback if regex stripped everything
+                                priority,
+                                context,
+                                energyCost: energySuggestion || 5
+                            });
+
+                            setValue(""); // Reset
+                        }}
                         className="bg-indigo-600 hover:bg-indigo-700 text-white p-2 rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                         disabled={!value.trim()}
                     >

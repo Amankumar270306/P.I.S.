@@ -1,7 +1,7 @@
 import axios from 'axios';
+import { Task, TaskContext, TaskPriority, TaskStatus } from '@/types/task';
 
-// Strict Type Definitions matching Pydantic Schemas
-
+// Backend DTOs
 export enum ContextEnum {
     DEEP_WORK = "DEEP_WORK",
     ADMIN = "ADMIN",
@@ -9,17 +9,24 @@ export enum ContextEnum {
     ERRAND = "ERRAND"
 }
 
-export interface TaskCreate {
+export interface TaskDTO {
+    id: number;
     title: string;
-    energy_cost: number; // 1-10
+    energy_cost: number;
     context: ContextEnum;
-    status?: string;
-    deadline?: string; // ISO Datetime string
+    status: string;
+    priority: string;
+    created_at: string;
+    deadline?: string;
 }
 
-export interface Task extends TaskCreate {
-    id: number;
-    created_at: string;
+export interface TaskCreateDTO {
+    title: string;
+    energy_cost: number;
+    context: ContextEnum;
+    status?: string;
+    priority?: string;
+    deadline?: string;
 }
 
 export interface SystemState {
@@ -36,6 +43,25 @@ const api = axios.create({
     },
 });
 
+// Mappers
+const mapToDomain = (dto: TaskDTO): Task => ({
+    id: String(dto.id),
+    title: dto.title,
+    status: dto.status as TaskStatus,
+    energyCost: dto.energy_cost,
+    context: dto.context as unknown as TaskContext, // Simplified mapping, assumes enum match
+    priority: dto.priority.toLowerCase() as TaskPriority,
+});
+
+const mapToDTO = (task: Partial<Task> & { title: string; energyCost: number; context: string }): TaskCreateDTO => ({
+    title: task.title,
+    energy_cost: task.energyCost,
+    context: task.context as unknown as ContextEnum,
+    status: task.status,
+    priority: task.priority ? (task.priority.charAt(0).toUpperCase() + task.priority.slice(1)) : "Medium",
+    // deadline: ...
+});
+
 // API Functions
 
 export const getTasks = async (status?: string, min_energy?: number): Promise<Task[]> => {
@@ -43,22 +69,29 @@ export const getTasks = async (status?: string, min_energy?: number): Promise<Ta
     if (status) params.append('status', status);
     if (min_energy) params.append('min_energy', min_energy.toString());
 
-    const response = await api.get('/tasks/', { params });
-    return response.data;
+    const response = await api.get<TaskDTO[]>('/tasks/', { params });
+    return response.data.map(mapToDomain);
 };
 
-export const createTask = async (task: TaskCreate): Promise<Task> => {
-    const response = await api.post('/tasks/', task);
-    return response.data;
+export const createTask = async (task: { title: string; energyCost: number; context: string; priority?: string }): Promise<Task> => {
+    const dto = mapToDTO(task as any);
+    const response = await api.post<TaskDTO>('/tasks/', dto);
+    return mapToDomain(response.data);
 };
 
-export const updateTask = async (id: number, updates: Partial<TaskCreate>): Promise<Task> => {
-    const response = await api.patch(`/tasks/${id}`, updates);
-    return response.data;
+export const updateTask = async (id: string, updates: Partial<Task>): Promise<Task> => {
+    // Partial mapping logic
+    const dtoUpdates: Partial<TaskCreateDTO> = {};
+    if (updates.title) dtoUpdates.title = updates.title;
+    if (updates.energyCost) dtoUpdates.energy_cost = updates.energyCost;
+    if (updates.status) dtoUpdates.status = updates.status;
+
+    const response = await api.patch<TaskDTO>(`/tasks/${id}`, dtoUpdates);
+    return mapToDomain(response.data);
 };
 
 export const getSystemState = async (): Promise<SystemState> => {
-    const response = await api.get('/system/state');
+    const response = await api.get<SystemState>('/system/state');
     return response.data;
 };
 
