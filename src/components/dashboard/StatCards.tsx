@@ -3,24 +3,24 @@ import { Lock, Mail, Coffee } from "lucide-react";
 const cards = [
     {
         label: "Context Mode",
-        value: "DEEP WORK",
+        value: "Start Session", // Placeholder for actual state
         icon: Lock,
-        iconColor: "text-indigo-600",
-        bgColor: "bg-indigo-50",
+        iconColor: "text-slate-400",
+        bgColor: "bg-slate-50",
     },
     {
         label: "Inbox Zero",
-        value: "5 Unprocessed Emails",
+        value: "Sync Email", // Placeholder
         icon: Mail,
-        iconColor: "text-blue-600",
-        bgColor: "bg-blue-50",
+        iconColor: "text-slate-400",
+        bgColor: "bg-slate-50",
     },
     {
         label: "Next Break",
-        value: "in 45 mins",
+        value: "Not Scheduled",
         icon: Coffee,
-        iconColor: "text-orange-600",
-        bgColor: "bg-orange-50",
+        iconColor: "text-slate-400",
+        bgColor: "bg-slate-50",
     },
 ];
 

@@ -260,6 +260,41 @@ def auto_plan(db: Session = Depends(get_db)):
         "message": "Schedule optimized successfully."
     }
 
+# --- Consistency Graph Endpoints ---
+
+@app.post("/consistency/log", response_model=schemas.ConsistencyLog, summary="Log Daily Consistency")
+def create_consistency_log(log: schemas.ConsistencyLogCreate, db: Session = Depends(get_db)):
+    """
+    Log a daily consistency entry (energy used vs total capacity).
+    Each user can only have one log per day (schema constraint).
+    """
+    # Check if log exists for today
+    existing_log = db.query(models.ConsistencyLog).filter(
+        models.ConsistencyLog.user_id == log.user_id,
+        models.ConsistencyLog.date == log.date.date()
+    ).first()
+
+    if existing_log:
+        existing_log.energy_used = log.energy_used
+        existing_log.total_capacity = log.total_capacity
+        db.add(existing_log)
+        db.commit()
+        db.refresh(existing_log)
+        return existing_log
+
+    db_log = models.ConsistencyLog(**log.model_dump())
+    db.add(db_log)
+    db.commit()
+    db.refresh(db_log)
+    return db_log
+
+@app.get("/consistency/logs/{user_id}", response_model=List[schemas.ConsistencyLog], summary="Get Consistency History")
+def read_consistency_logs(user_id: str, db: Session = Depends(get_db)):
+    """
+    Get all consistency logs for a specific user to build the graph.
+    """
+    return db.query(models.ConsistencyLog).filter(models.ConsistencyLog.user_id == user_id).order_by(models.ConsistencyLog.date).all()
+
 # --- AI Agent Chat ---
 
 import agent.chat as agent_chat

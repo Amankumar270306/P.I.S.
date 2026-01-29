@@ -4,12 +4,41 @@ import { EnergyMeter } from "@/components/dashboard/EnergyMeter";
 import { StatCards } from "@/components/dashboard/StatCards";
 import { ProductivityHeatmap } from "@/components/dashboard/ProductivityHeatmap";
 import { SmartInput } from "@/components/tasks/SmartInput";
+import { ConsistencyGraph } from "@/components/dashboard/ConsistencyGraph";
 import { useFocus } from "@/context/FocusContext";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createTask, getTasks } from "@/lib/api";
+import { Task } from "@/types/task";
 
 export default function Home() {
   const { startSession } = useFocus();
-  const [demoTasks, setDemoTasks] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+
+  useEffect(() => {
+    const fetchTasks = async () => {
+      try {
+        const data = await getTasks();
+        setTasks(data.reverse().slice(0, 5));
+      } catch (e) {
+        console.error("Failed to fetch tasks", e);
+      }
+    };
+    fetchTasks();
+  }, []);
+
+  const handleCreateTask = async (task: { title: string; date: Date | null }) => {
+    try {
+      const newTask = await createTask({
+        title: task.title,
+        energyCost: 5,
+        context: "DEEP_WORK",
+        deadline: task.date?.toISOString()
+      });
+      setTasks(prev => [newTask, ...prev].slice(0, 5));
+    } catch (e) {
+      console.error("Failed to create task", e);
+    }
+  };
 
   return (
     <div className="max-w-5xl mx-auto py-6 space-y-6 px-4">
@@ -30,7 +59,7 @@ export default function Home() {
       {/* Stats Row */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-5">
         <div className="md:col-span-1">
-          <EnergyMeter currentEnergy={12} maxEnergy={40} />
+          <EnergyMeter currentEnergy={0} maxEnergy={40} />
         </div>
         <div className="md:col-span-2">
           <StatCards />
@@ -52,8 +81,8 @@ export default function Home() {
             <ProductivityHeatmap />
           </div>
 
-          <div className="bg-white p-5 rounded-xl border border-slate-200/60 shadow-sm min-h-[200px] flex items-center justify-center text-slate-400 bg-slate-50/30">
-            <p className="text-sm">Calendar Integration Loading...</p>
+          <div className="bg-white p-5 rounded-xl border border-slate-200/60 shadow-sm">
+            <ConsistencyGraph />
           </div>
         </div>
 
@@ -61,26 +90,23 @@ export default function Home() {
         <div className="lg:col-span-1">
           <div className="bg-white p-5 rounded-xl border border-slate-200/60 shadow-sm h-full flex flex-col">
             <h3 className="text-base font-bold text-slate-800 mb-4">Quick Capture</h3>
-            <SmartInput onCreateTask={(task) => {
-              const newTask = { ...task, id: Date.now().toString(), status: 'todo' };
-              setDemoTasks(prev => [newTask, ...prev]);
-            }} />
+            <SmartInput onCreateTask={handleCreateTask} />
 
             <div className="mt-6 flex-1">
               <h4 className="text-[10px] font-bold text-slate-400 mb-3 uppercase tracking-wider">Recently Added</h4>
-              {demoTasks.length === 0 ? (
+              {tasks.length === 0 ? (
                 <div className="text-center py-8 bg-slate-50/50 rounded-lg border border-dashed border-slate-200 text-slate-400 text-xs">
                   <p>No tasks yet.</p>
                 </div>
               ) : (
                 <ul className="space-y-2">
-                  {demoTasks.map((t: any) => (
+                  {tasks.map((t) => (
                     <li key={t.id} className="group flex items-start justify-between p-2.5 bg-white hover:bg-slate-50 rounded-lg border border-slate-100 hover:border-indigo-100 transition-all shadow-sm cursor-pointer">
                       <div className="min-w-0">
                         <span className="text-slate-700 text-sm font-medium block truncate group-hover:text-indigo-700">{t.title}</span>
-                        {t.date && (
+                        {t.deadline && (
                           <span className="text-[10px] text-slate-500 mt-0.5 block">
-                            Due {new Date(t.date).toLocaleDateString()}
+                            Due {new Date(t.deadline).toLocaleDateString()}
                           </span>
                         )}
                       </div>
@@ -91,7 +117,7 @@ export default function Home() {
             </div>
           </div>
         </div>
-      </section>
-    </div>
+      </section >
+    </div >
   );
 }

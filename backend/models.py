@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime, Date
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
@@ -88,3 +88,12 @@ class Message(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     channel = relationship("Channel", back_populates="messages")
+
+class ConsistencyLog(Base):
+    __tablename__ = "consistency_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    date = Column(Date, unique=True, nullable=False, default=datetime.utcnow().date)
+    energy_used = Column(Integer, default=0)
+    total_capacity = Column(Integer, default=40)

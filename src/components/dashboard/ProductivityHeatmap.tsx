@@ -10,55 +10,54 @@ interface DayData {
     limit: number;
 }
 
-// Seeded random for deterministic hydration
-const getStableRandom = (seed: number) => {
-    const x = Math.sin(seed) * 10000;
-    return x - Math.floor(x);
-};
-
-// Mock Data Generator
-const generateHeatmapData = (): DayData[] => {
-    const today = new Date();
-    // Normalize to start of day to avoid time shifts causing mismatches
-    today.setHours(0, 0, 0, 0);
-
-    // Generate last 365 days
-    const startDate = subDays(today, 364);
-
-    return eachDayOfInterval({ start: startDate, end: today }).map(date => {
-        // Use date timestamp as seed for stability
-        const seed = date.getTime();
-
-        let shouldBurnout = getStableRandom(seed) > 0.9;
-        let isLowEnergy = getStableRandom(seed + 1) > 0.7;
-        let weekendFactor = getStableRandom(seed + 2);
-        let baseRandom = Math.floor(getStableRandom(seed + 3) * 38);
-        let weekendRandom = Math.floor(getStableRandom(seed + 4) * 20);
-
-        let energy = baseRandom;
-        const day = date.getDay();
-
-        if (day === 0 || day === 6) {
-            // Weekends often lower
-            energy = weekendFactor > 0.8 ? weekendRandom : 0;
-        } else {
-            // Weekdays
-            if (shouldBurnout) energy = 42; // Burnout spike
-            else if (isLowEnergy) energy = Math.floor(getStableRandom(seed + 5) * 15); // Low energy day
-        }
-
-        return {
-            date,
-            energySpent: energy,
-            limit: 40
-        };
-    });
-};
+// Reusing ConsistencyLog API for heatmap
+import { getConsistencyLogs, ConsistencyLog } from "@/lib/api";
 
 export function ProductivityHeatmap() {
-    const data = useMemo(() => generateHeatmapData(), []);
+    const [data, setData] = useState<DayData[]>([]);
+    const [loading, setLoading] = useState(true);
     const [hoveredDay, setHoveredDay] = useState<DayData | null>(null);
     const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
+
+    const userId = "00000000-0000-0000-0000-000000000000"; // Placeholder
+
+    React.useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const logs = await getConsistencyLogs(userId);
+
+                // Map logs to DayData
+                // We want to show at least the current year or recent history?
+                // Let's mimic GitHub style: last 365 days or just 2024?
+                // For simplicity, let's map existing logs and fill missing days with 0?
+                // Actually, let's just render the logs we have for now, or build a grid of the last 3 months?
+
+                // Better approach: Generate 'empty' grid for last 3 months, fill with log data.
+                const today = new Date();
+                const startDate = subDays(today, 90); // Last 90 days for cleaner view? Or 365?
+
+                // Create Map needed for O(1) lookup
+                const logMap = new Map<string, number>();
+                logs.forEach(l => logMap.set(l.date, l.energy_used));
+
+                const heatmapData = eachDayOfInterval({ start: startDate, end: today }).map(date => {
+                    const dateStr = format(date, 'yyyy-MM-dd');
+                    return {
+                        date,
+                        energySpent: logMap.get(dateStr) || 0,
+                        limit: 40
+                    };
+                });
+
+                setData(heatmapData);
+            } catch (error) {
+                console.error("Failed to load heatmap", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchData();
+    }, []);
 
     // Transform data into weeks for grid rendering
     // We want columns of weeks (Sunday to Saturday or Monday to Sunday). 

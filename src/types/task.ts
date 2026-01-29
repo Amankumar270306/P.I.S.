@@ -9,4 +9,5 @@ export interface Task {
     energyCost: number; // 1-10
     context: TaskContext;
     priority?: TaskPriority;
+    deadline?: string;
 }

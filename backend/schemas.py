@@ -31,6 +31,7 @@ class TaskUpdate(BaseModel):
     context: Optional[ContextEnum] = None
     status: Optional[str] = None
     deadline: Optional[datetime] = None
+    priority: Optional[str] = None
 
 class TaskResponse(TaskBase):
     id: int
@@ -133,5 +134,22 @@ class Document(DocumentBase):
     created_at: datetime
     updated_at: datetime
     
+    class Config:
+        from_attributes = True
+
+# --- Consistency Schemas ---
+
+class ConsistencyLogBase(BaseModel):
+    date: datetime
+    energy_used: int
+    total_capacity: int
+
+class ConsistencyLogCreate(ConsistencyLogBase):
+    user_id: uuid.UUID
+
+class ConsistencyLog(ConsistencyLogBase):
+    id: int
+    user_id: uuid.UUID
+
     class Config:
         from_attributes = True

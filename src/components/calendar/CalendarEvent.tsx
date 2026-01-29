@@ -18,25 +18,26 @@ export function CalendarEvent({ event }: CalendarEventProps) {
 
     const startHour = event.startTime.getHours();
     const startMinute = event.startTime.getMinutes();
-    const minutesFrom6AM = (startHour - 6) * 60 + startMinute;
-    const top = Math.max(0, minutesFrom6AM * pixelsPerMinute);
+    const minutesFromStart = (startHour - 7) * 60 + startMinute; // 7 AM Start
+    const top = Math.max(0, minutesFromStart * pixelsPerMinute);
 
     let bgClass = "bg-blue-100 border-blue-200 text-blue-800";
     let pulse = false;
 
     if (event.energyCost < 0) {
-        bgClass = "bg-green-100 border-green-200 text-green-800"; // Recovery
+        bgClass = "bg-emerald-500 text-white border-none"; // Recovery / Green block
     } else if (event.energyCost >= 8) {
-        bgClass = "bg-red-100 border-red-200 text-red-800";
-        pulse = true;
+        bgClass = "bg-rose-500 text-white border-none"; // High energy / Red block
     } else if (event.energyCost >= 4) {
-        bgClass = "bg-orange-100 border-orange-200 text-orange-800";
+        bgClass = "bg-blue-500 text-white border-none"; // Medium / Blue block
+    } else {
+        bgClass = "bg-indigo-500 text-white border-none"; // Default
     }
 
     return (
         <div
             className={cn(
-                "absolute left-1 right-1 rounded-md border p-1 text-xs shadow-sm overflow-hidden flex flex-col gap-1 transition-all hover:z-10 hover:shadow-md",
+                "absolute left-1 right-1 rounded-lg border p-2 text-xs shadow-sm overflow-hidden flex flex-col gap-0.5 transition-all hover:z-10 hover:shadow-md",
                 bgClass,
                 pulse && "animate-pulse"
             )}
@@ -45,18 +46,22 @@ export function CalendarEvent({ event }: CalendarEventProps) {
                 height: `${height}px`,
             }}
         >
-            <div className="flex items-center justify-between font-semibold leading-tight">
-                <span className="truncate">{event.title}</span>
-                {event.energyCost !== 0 && (
-                    <div className="flex items-center gap-0.5 shrink-0 bg-white/50 px-1 rounded-full">
-                        <Zap className="size-3 filling-current" fill="currentColor" />
-                        <span>{event.energyCost}</span>
-                    </div>
-                )}
+            <div className="font-semibold leading-tight text-white mb-0.5">
+                <span className="line-clamp-2">{event.title}</span>
             </div>
-            <div className="text-[10px] opacity-75">
-                {event.startTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+            <div className="text-[10px] text-white/80">
+                {event.startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
+                {' - '}
+                {new Date(event.startTime.getTime() + event.durationMinutes * 60000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
             </div>
+
+            {/* Avatars placeholder (optional, can add real ones later) */}
+            {event.energyCost > 6 && (
+                <div className="flex -space-x-1.5 mt-auto pt-1">
+                    <div className="size-4 rounded-full bg-white/20 border border-white/10" />
+                    <div className="size-4 rounded-full bg-white/20 border border-white/10" />
+                </div>
+            )}
         </div>
     );
 }

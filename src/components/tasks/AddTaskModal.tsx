@@ -60,12 +60,7 @@ export function AddTaskModal() {
         return "Brain Drain";
     };
 
-    const handleAutoEstimate = () => {
-        // Mock AI estimation
-        setEnergy(Math.floor(Math.random() * 5) + 3); // Random 3-8
-        const contexts = ['deep_work', 'meeting', 'admin'];
-        setContext(contexts[Math.floor(Math.random() * contexts.length)]);
-    };
+
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -74,7 +69,7 @@ export function AddTaskModal() {
 
         mutation.mutate({
             title,
-            energy_cost: energy,
+            energyCost: energy,
             context: selectedContext,
             deadline: date.toISOString(),
             status: "todo"
@@ -174,14 +169,7 @@ export function AddTaskModal() {
 
                         {/* Footer */}
                         <div className="pt-4 flex items-center justify-between border-t border-slate-100">
-                            <button
-                                type="button"
-                                onClick={handleAutoEstimate}
-                                className="flex items-center gap-2 text-indigo-600 text-sm font-medium hover:text-indigo-700 transition-colors"
-                            >
-                                <Sparkles className="w-4 h-4" />
-                                Auto-Estimate
-                            </button>
+
 
                             <button
                                 type="submit"

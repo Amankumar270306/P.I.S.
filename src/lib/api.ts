@@ -51,15 +51,16 @@ const mapToDomain = (dto: TaskDTO): Task => ({
     energyCost: dto.energy_cost,
     context: dto.context as unknown as TaskContext, // Simplified mapping, assumes enum match
     priority: dto.priority.toLowerCase() as TaskPriority,
+    deadline: dto.deadline,
 });
 
-const mapToDTO = (task: Partial<Task> & { title: string; energyCost: number; context: string }): TaskCreateDTO => ({
+const mapToDTO = (task: Partial<Task> & { title: string; energyCost: number; context: string; deadline?: string; status?: string; priority?: string }): TaskCreateDTO => ({
     title: task.title,
     energy_cost: task.energyCost,
     context: task.context as unknown as ContextEnum,
     status: task.status,
     priority: task.priority ? (task.priority.charAt(0).toUpperCase() + task.priority.slice(1)) : "Medium",
-    // deadline: ...
+    deadline: task.deadline
 });
 
 // API Functions
@@ -73,7 +74,7 @@ export const getTasks = async (status?: string, min_energy?: number): Promise<Ta
     return response.data.map(mapToDomain);
 };
 
-export const createTask = async (task: { title: string; energyCost: number; context: string; priority?: string }): Promise<Task> => {
+export const createTask = async (task: { title: string; energyCost: number; context: string; priority?: string; deadline?: string; status?: string }): Promise<Task> => {
     const dto = mapToDTO(task as any);
     const response = await api.post<TaskDTO>('/tasks/', dto);
     return mapToDomain(response.data);
@@ -85,6 +86,8 @@ export const updateTask = async (id: string, updates: Partial<Task>): Promise<Ta
     if (updates.title) dtoUpdates.title = updates.title;
     if (updates.energyCost) dtoUpdates.energy_cost = updates.energyCost;
     if (updates.status) dtoUpdates.status = updates.status;
+    if (updates.priority) dtoUpdates.priority = updates.priority.charAt(0).toUpperCase() + updates.priority.slice(1);
+    if (updates.context) dtoUpdates.context = updates.context as unknown as ContextEnum;
 
     const response = await api.patch<TaskDTO>(`/tasks/${id}`, dtoUpdates);
     return mapToDomain(response.data);
@@ -154,8 +157,27 @@ export const getChatHistory = async (channelId: string): Promise<ChatMessage[]> 
 
 export default api;
 
-// --- Document API ---
+// --- Consistency Graph API ---
 
+export interface ConsistencyLog {
+    id: number;
+    user_id: string;
+    date: string;
+    energy_used: number;
+    total_capacity: number;
+}
+
+export const getConsistencyLogs = async (userId: string): Promise<ConsistencyLog[]> => {
+    const response = await api.get<ConsistencyLog[]>(`/consistency/logs/${userId}`);
+    return response.data;
+};
+
+export const logConsistency = async (data: { user_id: string; date: string; energy_used: number; total_capacity: number }): Promise<ConsistencyLog> => {
+    const response = await api.post<ConsistencyLog>('/consistency/log', data);
+    return response.data;
+};
+
+// --- Document API ---
 export interface Document {
     id: number;
     title: string;
