@@ -4,15 +4,13 @@ import { useState } from "react";
 import { TaskBoard } from "@/components/tasks/TaskBoard";
 import { MatrixView } from "@/components/tasks/MatrixView";
 import { AddTaskDialog } from "@/components/tasks/AddTaskDialog";
-import { Plus, LayoutTemplate, LayoutGrid } from "lucide-react";
+import { TaskListSelector } from "@/components/tasks/TaskListSelector";
+import { Plus, LayoutTemplate, LayoutGrid, ArrowLeft } from "lucide-react";
 import { Task } from "@/types/task";
 import { cn } from "@/lib/utils";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getTasks, updateTask, createTask } from "@/lib/api";
-
-// Mock Data Removed - fetching from API
-
+import { getTasks, updateTask, createTask, deleteTask, getTaskLists, createTaskList, deleteTaskList, TaskList } from "@/lib/api";
 
 type ViewMode = 'board' | 'matrix';
 
@@ -20,46 +18,132 @@ export default function TasksPage() {
     const queryClient = useQueryClient();
     const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
     const [view, setView] = useState<ViewMode>('board');
+    const [selectedList, setSelectedList] = useState<TaskList | null>(null);
 
-    // Fetch Tasks
-    const { data: tasks = [], isLoading } = useQuery({
-        queryKey: ['tasks'],
-        queryFn: () => getTasks()
+    // Fetch Task Lists
+    const { data: lists = [], isLoading: listsLoading } = useQuery({
+        queryKey: ['taskLists'],
+        queryFn: () => getTaskLists()
+    });
+
+    // Fetch Tasks for selected list
+    const { data: tasks = [], isLoading: tasksLoading } = useQuery({
+        queryKey: ['tasks', selectedList?.id],
+        queryFn: () => getTasks(selectedList?.id),
+        enabled: !!selectedList
+    });
+
+    // Create List Mutation
+    const createListMutation = useMutation({
+        mutationFn: ({ name, color }: { name: string; color: string }) => createTaskList(name, color),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['taskLists'] });
+        }
+    });
+
+    // Delete List Mutation
+    const deleteListMutation = useMutation({
+        mutationFn: (id: string) => deleteTaskList(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['taskLists'] });
+        }
     });
 
     // Update Task Mutation
     const updateTaskMutation = useMutation({
         mutationFn: (variables: { id: string; updates: Partial<Task> }) => updateTask(variables.id, variables.updates),
-        // Actually updateTask takes (id, updates). 
-        // Let's correct this inline wrapper or just use the function directly if args match?
-        // useMutation expects one variable.
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['tasks'] });
+            queryClient.invalidateQueries({ queryKey: ['tasks', selectedList?.id] });
         }
     });
 
     // Create Task Mutation
     const createTaskMutation = useMutation({
-        mutationFn: (newTask: any) => createTask(newTask),
+        mutationFn: (newTask: any) => createTask({ ...newTask, list_id: selectedList?.id }),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['tasks'] });
+            queryClient.invalidateQueries({ queryKey: ['tasks', selectedList?.id] });
             setIsAddTaskOpen(false);
         }
     });
 
-    // Handler to update a single task
-    const handleTaskUpdate = async (updatedTask: Task) => {
-        // Optimistic update could go here, for now just call API
-        await updateTask(updatedTask.id, updatedTask);
-        queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    // Delete Task Mutation
+    const deleteTaskMutation = useMutation({
+        mutationFn: (taskId: string) => deleteTask(taskId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['tasks', selectedList?.id] });
+        }
+    });
+
+    const handleCreateTask = (task: any) => {
+        const formatDateWithTime = (date: Date | null, timeStr?: string) => {
+            if (!date) return undefined;
+            if (!timeStr) return date.toISOString();
+
+            const [hours, minutes] = timeStr.split(':').map(Number);
+            const newDate = new Date(date);
+            newDate.setHours(hours, minutes, 0, 0);
+            return newDate.toISOString();
+        };
+
+        const finalDeadline = formatDateWithTime(task.date, task.endedAt);
+        const referenceDate = task.date || new Date();
+        const finalStartedAt = task.startedAt ? formatDateWithTime(referenceDate, task.startedAt) : undefined;
+        const finalEndedAt = task.endedAt ? formatDateWithTime(referenceDate, task.endedAt) : undefined;
+
+        createTaskMutation.mutate({
+            title: task.title,
+            energyCost: task.energyCost,
+            context: task.description || "",
+            deadline: finalDeadline,
+            startedAt: finalStartedAt,
+            endedAt: finalEndedAt,
+            importance: task.importance,
+            isUrgent: task.isUrgent
+        });
     };
 
+    const handleTaskUpdate = async (updatedTask: Task) => {
+        updateTaskMutation.mutate({ id: updatedTask.id, updates: updatedTask });
+    };
+
+    const handleTaskDelete = async (taskId: string) => {
+        deleteTaskMutation.mutate(taskId);
+    };
+
+    // Show list selector if no list is selected
+    if (!selectedList) {
+        return (
+            <TaskListSelector
+                lists={lists}
+                onSelectList={setSelectedList}
+                onCreateList={(name, color) => createListMutation.mutate({ name, color })}
+                onDeleteList={(id) => deleteListMutation.mutate(id)}
+                isLoading={listsLoading}
+            />
+        );
+    }
+
+    // Show task board/matrix for selected list
     return (
         <div className="max-w-6xl mx-auto py-6 px-4 h-[calc(100vh-2rem)] flex flex-col">
             <header className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Tasks</h1>
-                    <p className="text-slate-500 text-sm mt-1">Manage and track your energy-based tasks.</p>
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => setSelectedList(null)}
+                        className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                    >
+                        <ArrowLeft className="size-5" />
+                    </button>
+                    <div>
+                        <h1 className="text-2xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
+                            <span
+                                className="w-3 h-3 rounded-full"
+                                style={{ backgroundColor: selectedList.color }}
+                            />
+                            {selectedList.name}
+                        </h1>
+                        <p className="text-slate-500 text-sm mt-1">Manage and track your tasks</p>
+                    </div>
                 </div>
                 <div className="flex items-center gap-3">
                     {/* View Switcher */}
@@ -97,8 +181,12 @@ export default function TasksPage() {
             </header>
 
             <div className="flex-1 min-h-0 bg-white/50 rounded-xl border border-slate-200/60 shadow-sm overflow-hidden backdrop-blur-sm">
-                {view === 'board' ? (
-                    <TaskBoard initialTasks={tasks} />
+                {tasksLoading ? (
+                    <div className="flex items-center justify-center h-full">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+                    </div>
+                ) : view === 'board' ? (
+                    <TaskBoard initialTasks={tasks} onTaskEdit={handleTaskUpdate} onTaskDelete={handleTaskDelete} />
                 ) : (
                     <MatrixView tasks={tasks} onTaskUpdate={handleTaskUpdate} />
                 )}
@@ -107,7 +195,7 @@ export default function TasksPage() {
             <AddTaskDialog
                 open={isAddTaskOpen}
                 onOpenChange={setIsAddTaskOpen}
-                onSubmit={(task) => createTaskMutation.mutate(task)}
+                onSubmit={handleCreateTask}
             />
         </div>
     );

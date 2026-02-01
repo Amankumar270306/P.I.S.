@@ -7,9 +7,11 @@ interface BoardColumnProps {
     id: string;
     title: string;
     tasks: Task[];
+    onTaskEdit?: (task: Task) => void;
+    onTaskDelete?: (taskId: string) => void;
 }
 
-export function BoardColumn({ id, title, tasks }: BoardColumnProps) {
+export function BoardColumn({ id, title, tasks, onTaskEdit, onTaskDelete }: BoardColumnProps) {
     const { setNodeRef, isOver } = useDroppable({
         id: id
     });
@@ -31,7 +33,13 @@ export function BoardColumn({ id, title, tasks }: BoardColumnProps) {
                 )}
             >
                 {tasks.map((task, index) => (
-                    <DraggableTaskCard key={task.id} task={task} index={index} />
+                    <DraggableTaskCard
+                        key={task.id}
+                        task={task}
+                        index={index}
+                        onEdit={onTaskEdit}
+                        onDelete={onTaskDelete}
+                    />
                 ))}
             </div>
         </div>

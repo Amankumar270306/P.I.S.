@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
     DndContext,
     DragOverlay,
@@ -17,17 +17,24 @@ import { TaskCard } from "./TaskCard";
 
 interface TaskBoardProps {
     initialTasks: Task[];
+    onTaskEdit?: (task: Task) => void;
+    onTaskDelete?: (taskId: string) => void;
 }
 
-export function TaskBoard({ initialTasks }: TaskBoardProps) {
+export function TaskBoard({ initialTasks, onTaskEdit, onTaskDelete }: TaskBoardProps) {
     const [tasks, setTasks] = useState<Task[]>(initialTasks);
     const [activeId, setActiveId] = useState<string | null>(null);
+
+    // Sync tasks when initialTasks prop changes (e.g., after React Query refetch)
+    useEffect(() => {
+        setTasks(initialTasks);
+    }, [initialTasks]);
 
     const activeTask = tasks.find(t => t.id === activeId);
 
     const columns = {
         todo: tasks.filter(t => t.status === 'todo'),
-        'in-progress': tasks.filter(t => t.status === 'in-progress'),
+        in_progress: tasks.filter(t => t.status === 'in_progress'),
         done: tasks.filter(t => t.status === 'done'),
     };
 
@@ -62,7 +69,8 @@ export function TaskBoard({ initialTasks }: TaskBoardProps) {
         // Update Local State
         setTasks(prev => prev.map(t => t.id === taskId ? updatedTask : t));
 
-        // Note: Ideally we call an API update here or props callback
+        // Call edit callback for API update
+        onTaskEdit?.(updatedTask);
     };
 
     return (
@@ -71,10 +79,10 @@ export function TaskBoard({ initialTasks }: TaskBoardProps) {
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
         >
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-full min-h-[500px]">
-                <BoardColumn id="todo" title="To Do" tasks={columns.todo} />
-                <BoardColumn id="in-progress" title="In Progress" tasks={columns['in-progress']} />
-                <BoardColumn id="done" title="Done" tasks={columns.done} />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-full min-h-[500px] p-4">
+                <BoardColumn id="todo" title="To Do" tasks={columns.todo} onTaskEdit={onTaskEdit} onTaskDelete={onTaskDelete} />
+                <BoardColumn id="in_progress" title="In Progress" tasks={columns.in_progress} onTaskEdit={onTaskEdit} onTaskDelete={onTaskDelete} />
+                <BoardColumn id="done" title="Done" tasks={columns.done} onTaskEdit={onTaskEdit} onTaskDelete={onTaskDelete} />
             </div>
 
             {typeof document !== 'undefined' && createPortal(

@@ -2,10 +2,11 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Command, Inbox, FileText, Settings, Calendar, User, PanelLeftClose, PanelLeftOpen, ListTodo, LogOut, Network, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DailyReviewModal } from './review/DailyReviewModal';
+import { useAuth } from '@/lib/auth-context';
 
 const navItems = [
     { name: 'Command Center', href: '/', icon: Command },
@@ -25,7 +26,14 @@ interface SidebarProps {
 
 export function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
     const pathname = usePathname();
+    const router = useRouter();
     const [isReviewOpen, setIsReviewOpen] = useState(false);
+    const { user, logout } = useAuth();
+
+    const handleLogout = () => {
+        logout();
+        router.push('/login');
+    };
 
     return (
         <aside
@@ -87,7 +95,7 @@ export function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
                     title={isCollapsed ? "Daily Review" : undefined}
                 >
                     <div className="flex items-center justify-center size-5 shrink-0 text-slate-400 group-hover:text-indigo-600">
-                        <LogOut className="size-5" />
+                        <FileText className="size-5" />
                     </div>
                     <span className={cn(
                         "text-sm font-medium transition-all duration-300 whitespace-nowrap overflow-hidden",
@@ -97,21 +105,52 @@ export function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
                     </span>
                 </button>
 
+                {/* User Profile Section */}
                 <div className={cn(
-                    "flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer overflow-hidden whitespace-nowrap",
+                    "flex items-center gap-3 px-2 py-2 rounded-lg overflow-hidden whitespace-nowrap",
                     isCollapsed ? "justify-center" : ""
                 )}>
                     <div className="flex items-center justify-center size-9 shrink-0 rounded-full bg-indigo-100 border border-indigo-200 text-indigo-600">
-                        <User className="size-5" />
+                        {user?.name ? (
+                            <span className="text-sm font-bold">{user.name.charAt(0).toUpperCase()}</span>
+                        ) : (
+                            <User className="size-5" />
+                        )}
                     </div>
                     <div className={cn(
-                        "flex flex-col transition-all duration-300",
+                        "flex flex-col flex-1 min-w-0 transition-all duration-300",
                         isCollapsed ? "opacity-0 w-0 hidden" : "opacity-100 w-auto"
                     )}>
-                        <span className="text-sm font-semibold text-slate-900">User Profile</span>
-                        <span className="text-xs text-slate-500">user@example.com</span>
+                        <span className="text-sm font-semibold text-slate-900 truncate">
+                            {user?.name || 'Guest'}
+                        </span>
+                        <span className="text-xs text-slate-500 truncate">
+                            {user?.email || 'Not logged in'}
+                        </span>
                     </div>
                 </div>
+
+                {/* Logout Button */}
+                {user && (
+                    <button
+                        onClick={handleLogout}
+                        className={cn(
+                            "w-full flex items-center gap-3 px-2 py-2 rounded-lg text-slate-600 hover:bg-red-50 hover:text-red-600 transition-colors group",
+                            isCollapsed ? "justify-center" : ""
+                        )}
+                        title={isCollapsed ? "Logout" : undefined}
+                    >
+                        <div className="flex items-center justify-center size-5 shrink-0 text-slate-400 group-hover:text-red-600">
+                            <LogOut className="size-5" />
+                        </div>
+                        <span className={cn(
+                            "text-sm font-medium transition-all duration-300 whitespace-nowrap overflow-hidden",
+                            isCollapsed ? "opacity-0 w-0 hidden" : "opacity-100 w-auto"
+                        )}>
+                            Logout
+                        </span>
+                    </button>
+                )}
             </div>
 
             <DailyReviewModal open={isReviewOpen} onOpenChange={setIsReviewOpen} />

@@ -1,5 +1,5 @@
-export type TaskStatus = 'todo' | 'in-progress' | 'done';
-export type TaskContext = 'Work' | 'Personal' | 'Errand' | 'Delegated';
+export type TaskStatus = 'todo' | 'in_progress' | 'done';
+export type TaskContext = 'Work' | 'Personal' | 'Errand' | 'Delegated' | 'DEEP_WORK' | 'ADMIN' | 'MEETING';
 export type TaskPriority = 'high' | 'medium' | 'low';
 
 export interface Task {
@@ -7,7 +7,11 @@ export interface Task {
     title: string;
     status: TaskStatus;
     energyCost: number; // 1-10
-    context: TaskContext;
+    context: string;
     priority?: TaskPriority;
     deadline?: string;
+    startedAt?: string;
+    endedAt?: string;
+    importance?: boolean;
+    isUrgent?: boolean;
 }

@@ -10,23 +10,32 @@ export enum ContextEnum {
 }
 
 export interface TaskDTO {
-    id: number;
+    id: string;
     title: string;
     energy_cost: number;
-    context: ContextEnum;
+    context?: string;
     status: string;
     priority: string;
     created_at: string;
     deadline?: string;
+    started_at?: string;
+    ended_at?: string;
+    importance?: boolean;
+    is_urgent?: boolean;
 }
 
 export interface TaskCreateDTO {
     title: string;
     energy_cost: number;
-    context: ContextEnum;
+    context?: string;
     status?: string;
     priority?: string;
     deadline?: string;
+    started_at?: string;
+    ended_at?: string;
+    importance?: boolean;
+    is_urgent?: boolean;
+    list_id?: string;
 }
 
 export interface SystemState {
@@ -49,24 +58,77 @@ const mapToDomain = (dto: TaskDTO): Task => ({
     title: dto.title,
     status: dto.status as TaskStatus,
     energyCost: dto.energy_cost,
-    context: dto.context as unknown as TaskContext, // Simplified mapping, assumes enum match
+    context: dto.context || "",
     priority: dto.priority.toLowerCase() as TaskPriority,
     deadline: dto.deadline,
+    startedAt: dto.started_at,
+    endedAt: dto.ended_at,
+    importance: dto.importance,
+    isUrgent: dto.is_urgent,
 });
 
-const mapToDTO = (task: Partial<Task> & { title: string; energyCost: number; context: string; deadline?: string; status?: string; priority?: string }): TaskCreateDTO => ({
+const mapToDTO = (task: Partial<Task> & { title: string; energyCost: number; context: string; list_id?: string }): TaskCreateDTO => ({
     title: task.title,
     energy_cost: task.energyCost,
-    context: task.context as unknown as ContextEnum,
+    context: task.context,
     status: task.status,
     priority: task.priority ? (task.priority.charAt(0).toUpperCase() + task.priority.slice(1)) : "Medium",
-    deadline: task.deadline
+    deadline: task.deadline,
+    started_at: task.startedAt,
+    ended_at: task.endedAt,
+    importance: task.importance,
+    is_urgent: task.isUrgent,
+    list_id: task.list_id
 });
+
+// Task List Types
+export interface TaskListDTO {
+    id: string;
+    name: string;
+    color: string;
+    icon: string;
+    created_at: string;
+}
+
+export interface TaskList {
+    id: string;
+    name: string;
+    color: string;
+    icon: string;
+    createdAt: string;
+}
 
 // API Functions
 
-export const getTasks = async (status?: string, min_energy?: number): Promise<Task[]> => {
+export const getTaskLists = async (): Promise<TaskList[]> => {
+    const response = await api.get<TaskListDTO[]>('/lists/');
+    return response.data.map(dto => ({
+        id: dto.id,
+        name: dto.name,
+        color: dto.color,
+        icon: dto.icon,
+        createdAt: dto.created_at
+    }));
+};
+
+export const createTaskList = async (name: string, color?: string): Promise<TaskList> => {
+    const response = await api.post<TaskListDTO>('/lists/', { name, color });
+    return {
+        id: response.data.id,
+        name: response.data.name,
+        color: response.data.color,
+        icon: response.data.icon,
+        createdAt: response.data.created_at
+    };
+};
+
+export const deleteTaskList = async (id: string): Promise<void> => {
+    await api.delete(`/lists/${id}`);
+};
+
+export const getTasks = async (listId?: string, status?: string, min_energy?: number): Promise<Task[]> => {
     const params = new URLSearchParams();
+    if (listId) params.append('list_id', listId);
     if (status) params.append('status', status);
     if (min_energy) params.append('min_energy', min_energy.toString());
 
@@ -74,7 +136,7 @@ export const getTasks = async (status?: string, min_energy?: number): Promise<Ta
     return response.data.map(mapToDomain);
 };
 
-export const createTask = async (task: { title: string; energyCost: number; context: string; priority?: string; deadline?: string; status?: string }): Promise<Task> => {
+export const createTask = async (task: Partial<Task> & { title: string; energyCost: number; context: string }): Promise<Task> => {
     const dto = mapToDTO(task as any);
     const response = await api.post<TaskDTO>('/tasks/', dto);
     return mapToDomain(response.data);
@@ -91,6 +153,10 @@ export const updateTask = async (id: string, updates: Partial<Task>): Promise<Ta
 
     const response = await api.patch<TaskDTO>(`/tasks/${id}`, dtoUpdates);
     return mapToDomain(response.data);
+};
+
+export const deleteTask = async (id: string): Promise<void> => {
+    await api.delete(`/tasks/${id}`);
 };
 
 export const getSystemState = async (): Promise<SystemState> => {

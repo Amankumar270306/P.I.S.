@@ -40,7 +40,7 @@ const quadrants: {
             color: 'text-rose-500',
             borderColor: 'border-rose-200',
             bgAccent: 'bg-rose-50',
-            filter: (t: Task) => t.priority === 'high'
+            filter: (t: Task) => !!t.isUrgent && !!t.importance
         },
         {
             id: 'schedule',
@@ -50,7 +50,7 @@ const quadrants: {
             color: 'text-blue-500',
             borderColor: 'border-blue-200',
             bgAccent: 'bg-blue-50',
-            filter: (t: Task) => t.priority === 'medium' && t.status !== 'done'
+            filter: (t: Task) => !t.isUrgent && !!t.importance
         },
         {
             id: 'delegate',
@@ -60,7 +60,7 @@ const quadrants: {
             color: 'text-amber-500',
             borderColor: 'border-amber-200',
             bgAccent: 'bg-amber-50',
-            filter: (t: Task) => t.priority === 'low' && t.context === 'Delegated'
+            filter: (t: Task) => !!t.isUrgent && !t.importance
         },
         {
             id: 'eliminate',
@@ -70,7 +70,7 @@ const quadrants: {
             color: 'text-slate-400',
             borderColor: 'border-slate-200',
             bgAccent: 'bg-slate-50',
-            filter: (t: Task) => !['high', 'medium'].includes(t.priority || '') && t.context !== 'Delegated'
+            filter: (t: Task) => !t.isUrgent && !t.importance
         }
     ];
 
@@ -185,24 +185,20 @@ export function MatrixView({ tasks, onTaskUpdate }: MatrixViewProps) {
 
         switch (quadrantId) {
             case 'do_first':
-                if (updatedTask.priority !== 'high') {
-                    updatedTask.priority = 'high';
-                }
+                updatedTask.isUrgent = true;
+                updatedTask.importance = true;
                 break;
             case 'schedule':
-                if (updatedTask.priority !== 'medium') {
-                    updatedTask.priority = 'medium';
-                }
+                updatedTask.isUrgent = false;
+                updatedTask.importance = true;
                 break;
             case 'delegate':
-                updatedTask.priority = 'low';
-                updatedTask.context = 'Delegated';
+                updatedTask.isUrgent = true;
+                updatedTask.importance = false;
                 break;
             case 'eliminate':
-                updatedTask.priority = 'low';
-                // If moving to eliminate, maybe we set status or just context?
-                // Let's stick to priority logic primarily or clear context
-                if (updatedTask.context === 'Delegated') updatedTask.context = 'Work'; // Reset delegate context
+                updatedTask.isUrgent = false;
+                updatedTask.importance = false;
                 break;
         }
 

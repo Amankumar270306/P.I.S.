@@ -25,16 +25,86 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from routers import direct_db
+app.include_router(direct_db.router)
+
 # --- CRUD Endpoints ---
+
+import uuid as uuid_module
+
+# Hardcoded default user ID for "aman" in auth.users
+DEFAULT_USER_ID = uuid_module.UUID("5a739fce-9d21-4be2-970a-4b3aa52133a8")
+
+# --- Task List Endpoints ---
+
+@app.get("/lists/", response_model=List[schemas.TaskListResponse], summary="List all task lists")
+def read_lists(db: Session = Depends(get_db)):
+    """Get all task lists for the current user."""
+    return db.query(models.TaskList).filter(models.TaskList.user_id == DEFAULT_USER_ID).all()
+
+@app.post("/lists/", response_model=schemas.TaskListResponse, summary="Create a new task list")
+def create_list(task_list: schemas.TaskListCreate, db: Session = Depends(get_db)):
+    """Create a new task list."""
+    db_list = models.TaskList(**task_list.model_dump())
+    db_list.user_id = DEFAULT_USER_ID
+    db.add(db_list)
+    db.commit()
+    db.refresh(db_list)
+    return db_list
+
+@app.delete("/lists/{list_id}", summary="Delete a task list")
+def delete_list(list_id: uuid_module.UUID, db: Session = Depends(get_db)):
+    """Delete a task list and all its tasks."""
+    db_list = db.query(models.TaskList).filter(models.TaskList.id == list_id).first()
+    if not db_list:
+        raise HTTPException(status_code=404, detail="List not found")
+    # Delete associated tasks
+    db.query(models.Task).filter(models.Task.list_id == list_id).delete()
+    db.delete(db_list)
+    db.commit()
+    return {"message": "List deleted"}
+
+# --- Task Endpoints ---
 
 @app.post("/tasks/", response_model=schemas.TaskResponse, summary="Create a new task")
 def create_task(task: schemas.TaskCreate, db: Session = Depends(get_db)):
     """
     Creates a new task in the PIS system.
+    Checks daily energy limit (30 max) before creating.
     Returns the created task with its ID and timestamp.
     """
-    db_task = models.Task(**task.model_dump())
+    today = datetime.now().date()
+    
+    # Get or create today's energy log
+    energy_log = db.query(models.EnergyLog).filter(
+        models.EnergyLog.date == today
+    ).first()
+    
+    if not energy_log:
+        energy_log = models.EnergyLog(date=today, capacity=30, used=0)
+        db.add(energy_log)
+        db.commit()
+        db.refresh(energy_log)
+    
+    # Check if adding this task would exceed daily limit
+    remaining = energy_log.capacity - energy_log.used
+    if task.energy_cost > remaining:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Not enough energy. Remaining: {remaining}, Required: {task.energy_cost}"
+        )
+    
+    # Create the task
+    task_data = task.model_dump()
+    db_task = models.Task(**task_data)
+    db_task.user_id = DEFAULT_USER_ID
+    
     db.add(db_task)
+    
+    # Update energy used
+    energy_log.used += task.energy_cost
+    db.add(energy_log)
+    
     db.commit()
     db.refresh(db_task)
     return db_task
@@ -43,6 +113,7 @@ def create_task(task: schemas.TaskCreate, db: Session = Depends(get_db)):
 def read_tasks(
     status: Optional[str] = Query(None, description="Filter by task status (e.g., 'todo')"),
     min_energy: Optional[int] = Query(None, description="Filter by minimum energy cost"),
+    list_id: Optional[uuid_module.UUID] = Query(None, description="Filter by task list ID"),
     db: Session = Depends(get_db)
 ):
     """
@@ -55,8 +126,20 @@ def read_tasks(
         query = query.filter(models.Task.status == status)
     if min_energy:
         query = query.filter(models.Task.energy_cost >= min_energy)
+    if list_id:
+        query = query.filter(models.Task.list_id == list_id)
         
     return query.all()
+
+@app.delete("/tasks/{task_id}", summary="Delete a task")
+def delete_task(task_id: uuid_module.UUID, db: Session = Depends(get_db)):
+    """Delete a task by its ID."""
+    db_task = db.query(models.Task).filter(models.Task.id == task_id).first()
+    if not db_task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    db.delete(db_task)
+    db.commit()
+    return {"message": "Task deleted"}
 
 @app.patch("/tasks/{task_id}", response_model=schemas.TaskResponse, summary="Update a task")
 def update_task(task_id: int, task_update: schemas.TaskUpdate, db: Session = Depends(get_db)):
@@ -75,6 +158,51 @@ def update_task(task_id: int, task_update: schemas.TaskUpdate, db: Session = Dep
     db.commit()
     db.refresh(db_task)
     return db_task
+
+# --- Daily Energy Endpoints ---
+
+@app.get("/energy/today", summary="Get today's energy status")
+def get_today_energy(db: Session = Depends(get_db)):
+    """
+    Returns today's energy capacity and usage.
+    If no log exists for today, creates one with default 30 capacity.
+    """
+    today = datetime.now().date()
+    
+    energy_log = db.query(models.EnergyLog).filter(
+        models.EnergyLog.date == today
+    ).first()
+    
+    if not energy_log:
+        energy_log = models.EnergyLog(date=today, capacity=30, used=0)
+        db.add(energy_log)
+        db.commit()
+        db.refresh(energy_log)
+    
+    return {
+        "date": str(today),
+        "capacity": energy_log.capacity,
+        "used": energy_log.used,
+        "remaining": energy_log.capacity - energy_log.used
+    }
+
+@app.post("/energy/reset", summary="Reset today's energy")
+def reset_today_energy(db: Session = Depends(get_db)):
+    """
+    Resets today's energy used to 0.
+    """
+    today = datetime.now().date()
+    
+    energy_log = db.query(models.EnergyLog).filter(
+        models.EnergyLog.date == today
+    ).first()
+    
+    if energy_log:
+        energy_log.used = 0
+        db.commit()
+        db.refresh(energy_log)
+    
+    return {"message": "Energy reset", "remaining": 30}
 
 # --- AI Context Endpoint ---
 

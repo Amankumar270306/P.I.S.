@@ -1,29 +1,71 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { format, addDays, startOfWeek, setHours, setMinutes } from "date-fns";
+import { useState, useMemo } from "react";
+import { format, addDays, startOfWeek, differenceInMinutes, parseISO } from "date-fns";
 import { ChevronLeft, ChevronRight, PanelRightOpen, PanelRightClose } from "lucide-react";
 import { CalendarEvent as CalendarEventComponent } from "@/components/calendar/CalendarEvent";
 import { CalendarSidebar } from "@/components/calendar/CalendarSidebar";
 import { CalendarEvent } from "@/types/calendar";
 import { cn } from "@/lib/utils";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getTasks, updateTask, deleteTask } from "@/lib/api";
+import { Task } from "@/types/task";
 
-const generateMockEvents = (): CalendarEvent[] => {
-    return [];
+// Convert tasks with scheduled times to calendar events
+const tasksToCalendarEvents = (tasks: Task[]): CalendarEvent[] => {
+    return tasks
+        .filter(task => task.startedAt && task.endedAt)
+        .map(task => {
+            const startTime = new Date(task.startedAt!);
+            const endTime = new Date(task.endedAt!);
+            const durationMinutes = Math.max(30, differenceInMinutes(endTime, startTime));
+
+            return {
+                id: `task-${task.id}`,
+                title: task.title,
+                startTime,
+                durationMinutes,
+                energyCost: task.energyCost,
+                taskId: task.id
+            };
+        });
 };
 
 export default function CalendarPage() {
+    const queryClient = useQueryClient();
     const [currentDate, setCurrentDate] = useState(new Date());
-    const [events, setEvents] = useState<CalendarEvent[]>([]);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
-    useEffect(() => {
-        setEvents(generateMockEvents());
-    }, []);
+    // Fetch all tasks
+    const { data: tasks = [] } = useQuery({
+        queryKey: ['calendarTasks'],
+        queryFn: () => getTasks()
+    });
+
+    // Convert tasks to calendar events
+    const events = useMemo(() => tasksToCalendarEvents(tasks), [tasks]);
+
+    // Mutations for task actions
+    const updateTaskMutation = useMutation({
+        mutationFn: (variables: { id: string; updates: Partial<Task> }) => updateTask(variables.id, variables.updates),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['calendarTasks'] });
+        }
+    });
+
+    const deleteTaskMutation = useMutation({
+        mutationFn: (taskId: string) => deleteTask(taskId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['calendarTasks'] });
+        }
+    });
 
     const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
     const weekDays = Array.from({ length: 7 }).map((_, i) => addDays(weekStart, i));
     const timeSlots = Array.from({ length: 24 }).map((_, i) => i); // 0 to 23 (24 slots)
+
+    const handlePrevWeek = () => setCurrentDate(addDays(currentDate, -7));
+    const handleNextWeek = () => setCurrentDate(addDays(currentDate, 7));
 
     return (
         <div className="flex h-screen bg-white text-slate-900 overflow-hidden font-sans">
@@ -35,6 +77,20 @@ export default function CalendarPage() {
                         <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
                             {format(currentDate, "MMMM yyyy")}
                         </h1>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={handlePrevWeek}
+                                className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                            >
+                                <ChevronLeft className="size-5" />
+                            </button>
+                            <button
+                                onClick={handleNextWeek}
+                                className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                            >
+                                <ChevronRight className="size-5" />
+                            </button>
+                        </div>
                     </div>
 
                     <div className="flex items-center gap-4">
@@ -55,16 +111,22 @@ export default function CalendarPage() {
 
                 {/* Week Header */}
                 <div className="grid grid-cols-[60px_1fr] px-4 pb-2">
-                    <div className="text-xs font-medium text-slate-400 pt-3">GMT +4</div>
+                    <div className="text-xs font-medium text-slate-400 pt-3">GMT +5:30</div>
                     <div className="grid grid-cols-7 gap-4">
                         {weekDays.map(day => {
                             const isToday = format(day, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd");
+                            const dayEvents = events.filter(e =>
+                                format(e.startTime, "yyyy-MM-dd") === format(day, "yyyy-MM-dd")
+                            );
                             return (
                                 <div key={day.toISOString()} className={cn(
                                     "text-center py-3 rounded-xl border border-transparent transition-colors",
                                     isToday ? "bg-slate-900 text-white font-bold" : "bg-slate-50 text-slate-500 hover:bg-slate-100"
                                 )}>
                                     <div className="text-sm">{format(day, "EEE d")}</div>
+                                    {dayEvents.length > 0 && (
+                                        <div className="text-xs opacity-60">{dayEvents.length} task{dayEvents.length > 1 ? 's' : ''}</div>
+                                    )}
                                 </div>
                             );
                         })}
@@ -101,18 +163,14 @@ export default function CalendarPage() {
 
                                 return (
                                     <div key={day.toISOString()} className="relative h-full">
-                                        {dayEvents.map(event => {
-                                            // Calculate Top offset based on 00:00 start (Midnight)
-                                            // 00:00 = 0px
-                                            const startHour = event.startTime.getHours();
-                                            const startMinute = event.startTime.getMinutes();
-                                            // No offset subtraction needed as we start at 0
-                                            const minutesFromMidnight = startHour * 60 + startMinute;
-
-                                            return (
-                                                <CalendarEventComponent key={event.id} event={event} />
-                                            );
-                                        })}
+                                        {dayEvents.map(event => (
+                                            <CalendarEventComponent
+                                                key={event.id}
+                                                event={event}
+                                                onEdit={event.taskId ? (updates) => updateTaskMutation.mutate({ id: event.taskId!, updates }) : undefined}
+                                                onDelete={event.taskId ? () => deleteTaskMutation.mutate(event.taskId!) : undefined}
+                                            />
+                                        ))}
 
                                         {/* Create New Button Placeholder (Floating +) */}
                                         <div className="absolute inset-0 hover:bg-white/5 transition-colors rounded-lg group">
@@ -134,7 +192,13 @@ export default function CalendarPage() {
                 )}
             >
                 <div className="w-[300px] h-full"> {/* Inner container to prevent content layout shift during transition */}
-                    <CalendarSidebar selectedDate={currentDate} onSelectDate={setCurrentDate} />
+                    <CalendarSidebar
+                        selectedDate={currentDate}
+                        onSelectDate={setCurrentDate}
+                        tasks={tasks}
+                        onTaskEdit={(task) => updateTaskMutation.mutate({ id: task.id, updates: task })}
+                        onTaskDelete={(taskId) => deleteTaskMutation.mutate(taskId)}
+                    />
                 </div>
             </div>
         </div>

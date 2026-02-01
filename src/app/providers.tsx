@@ -2,6 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React, { useState } from 'react';
+import { AuthProvider } from '@/lib/auth-context';
 
 export default function Providers({ children }: { children: React.ReactNode }) {
     // Ensure QueryClient is created once per instance
@@ -15,7 +16,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 
     return (
         <QueryClientProvider client={queryClient}>
-            {children}
+            <AuthProvider>
+                {children}
+            </AuthProvider>
         </QueryClientProvider>
     );
 }

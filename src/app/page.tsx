@@ -26,13 +26,54 @@ export default function Home() {
     fetchTasks();
   }, []);
 
-  const handleCreateTask = async (task: { title: string; date: Date | null }) => {
+  const handleCreateTask = async (task: {
+    title: string;
+    date: Date | null;
+    description?: string;
+    startedAt?: string;
+    endedAt?: string;
+    energyCost: number;
+    importance: boolean;
+    isUrgent: boolean;
+  }) => {
     try {
+      // Helper to combine date and time if both exist
+      const formatDateWithTime = (date: Date | null, timeStr?: string) => {
+        if (!date) return undefined;
+        if (!timeStr) return date.toISOString();
+
+        const [hours, minutes] = timeStr.split(':').map(Number);
+        const newDate = new Date(date);
+        newDate.setHours(hours, minutes, 0, 0);
+        return newDate.toISOString();
+      };
+
+      // Determine explicit deadline from parsed date + end time or just date
+      // Storing just in deadline for now as 'scheduled_date' usually maps to deadline in basic view
+      const finalDeadline = formatDateWithTime(task.date, task.endedAt);
+
+      // Also construct startedAt ISO if needed. 
+      // Note: startedAt/endedAt in schema are usually execution logs, but we'll map them here if user intended planning.
+      // But standard `started_at` in our model is "When did I start working".
+      // If user wants planned start/end, we might need new columns `planned_start`.
+      // For now, let's map input `startedAt` string directly or to `scheduled_date`?
+      // Re-reading user request: "Start to end time both are optional".
+      // I will store them as is in the props if the backend supports strings (it expects datetime).
+      // So I will parse them against the `task.date` (or today).
+
+      const referenceDate = task.date || new Date();
+      const finalStartedAt = task.startedAt ? formatDateWithTime(referenceDate, task.startedAt) : undefined;
+      const finalEndedAt = task.endedAt ? formatDateWithTime(referenceDate, task.endedAt) : undefined;
+
       const newTask = await createTask({
         title: task.title,
-        energyCost: 5,
-        context: "DEEP_WORK",
-        deadline: task.date?.toISOString()
+        energyCost: task.energyCost,
+        context: task.description || "", // Map description to context
+        deadline: finalDeadline,
+        startedAt: finalStartedAt,
+        endedAt: finalEndedAt,
+        importance: task.importance,
+        isUrgent: task.isUrgent
       });
       setTasks(prev => [newTask, ...prev].slice(0, 5));
     } catch (e) {

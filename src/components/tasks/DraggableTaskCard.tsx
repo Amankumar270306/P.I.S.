@@ -5,12 +5,12 @@ import { cn } from "@/lib/utils";
 
 interface DraggableTaskCardProps {
     task: Task;
-    // index is no longer strictly needed for useDraggable id-based logic, 
-    // but kept if we upgrade to sortable later.
     index: number;
+    onEdit?: (task: Task) => void;
+    onDelete?: (taskId: string) => void;
 }
 
-export function DraggableTaskCard({ task }: DraggableTaskCardProps) {
+export function DraggableTaskCard({ task, onEdit, onDelete }: DraggableTaskCardProps) {
     const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
         id: task.id,
         data: { task }
@@ -27,7 +27,7 @@ export function DraggableTaskCard({ task }: DraggableTaskCardProps) {
                 isDragging ? "opacity-30" : "opacity-100"
             )}
         >
-            <TaskCard task={task} />
+            <TaskCard task={task} onEdit={onEdit} onDelete={onDelete} />
         </div>
     );
 }

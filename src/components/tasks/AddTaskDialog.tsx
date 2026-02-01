@@ -3,7 +3,7 @@
 import React from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X, Check } from "lucide-react";
-import { SmartTaskInput } from "@/components/inbox/SmartTaskInput";
+import { SmartInput } from "@/components/tasks/SmartInput";
 
 export function AddTaskDialog({ open, onOpenChange, onSubmit }: { open: boolean; onOpenChange: (open: boolean) => void; onSubmit?: (task: any) => void }) {
     return (
@@ -21,7 +21,7 @@ export function AddTaskDialog({ open, onOpenChange, onSubmit }: { open: boolean;
                     </div>
 
                     <div className="py-4">
-                        <SmartTaskInput onSubmit={(task) => {
+                        <SmartInput onCreateTask={(task) => {
                             onSubmit?.(task);
                             onOpenChange(false);
                         }} />

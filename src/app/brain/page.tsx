@@ -177,8 +177,8 @@ export default function DocsPage() {
                             </div>
                         </div>
 
-                        {/* Linked Tasks Sidebar - Restored */}
-                        <LinkedTasks />
+                        {/* Linked Tasks Sidebar */}
+                        <LinkedTasks sourceType="document" sourceId={selectedDoc.id.toString()} />
                     </div>
                 ) : (
                     <div className="flex-1 flex items-center justify-center text-slate-400 bg-slate-50/50">

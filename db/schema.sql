@@ -29,18 +29,52 @@ on public.emails for update
 using (auth.uid() = user_id);
 
 
--- 2. TASKS TABLE (Dependencies: auth.users, public.emails)
+-- 2. TASK LISTS TABLE (Dependencies: auth.users)
+create table public.task_lists (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid references auth.users not null,
+  name text not null,
+  color text default '#6366f1',
+  icon text default 'list',
+  created_at timestamptz default now()
+);
+
+alter table public.task_lists enable row level security;
+
+create policy "Users can view their own lists" 
+on public.task_lists for select 
+using (auth.uid() = user_id);
+
+create policy "Users can insert their own lists" 
+on public.task_lists for insert 
+with check (auth.uid() = user_id);
+
+create policy "Users can update their own lists" 
+on public.task_lists for update 
+using (auth.uid() = user_id);
+
+create policy "Users can delete their own lists" 
+on public.task_lists for delete 
+using (auth.uid() = user_id);
+
+
+-- 3. TASKS TABLE (Dependencies: auth.users, public.task_lists)
 create table public.tasks (
   id uuid primary key default uuid_generate_v4(),
   user_id uuid references auth.users not null,
+  list_id uuid references public.task_lists(id),
   title text not null,
+  description text,
   status text check (status in ('todo', 'in_progress', 'done', 'backlog')) default 'todo',
   energy_cost integer check (energy_cost >= 1 and energy_cost <= 10),
   context text, 
+  priority text check (priority in ('High', 'Medium', 'Low')) default 'Medium',
   deadline timestamptz,
+  scheduled_date timestamptz,
   started_at timestamptz,
   ended_at timestamptz,
-  importance integer,
+  importance boolean default false,
+  is_urgent boolean default false,
   linked_email_id uuid references public.emails(id),
   created_at timestamptz default now(),
   updated_at timestamptz default now()
