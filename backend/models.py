@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime, Date
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime, Date, Float
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
@@ -13,6 +13,11 @@ class ContextEnum(str, enum.Enum):
     MEETING = "MEETING"
     ERRAND = "ERRAND"
 
+class SourceTypeEnum(str, enum.Enum):
+    EMAIL = "email"
+    DOCUMENT = "document"
+
+
 class Task(Base):
     __tablename__ = "tasks"
 
@@ -24,6 +29,9 @@ class Task(Base):
     priority = Column(String, default="Medium")
     deadline = Column(DateTime, nullable=True)
     scheduled_date = Column(DateTime, nullable=True)
+    started_at = Column(DateTime, nullable=True)
+    ended_at = Column(DateTime, nullable=True)
+    importance = Column(Integer, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 class Email(Base):
@@ -32,7 +40,7 @@ class Email(Base):
     id = Column(Integer, primary_key=True, index=True)
     subject = Column(String)
     sender = Column(String)
-    is_processed = Column(Integer, default=0)
+    # is_processed removed
     received_at = Column(DateTime, default=datetime.utcnow)
 
 class EnergyLog(Base):
@@ -45,13 +53,13 @@ class EnergyLog(Base):
     reason = Column(String)
 
 class Document(Base):
-    __tablename__ = "documents"
+    __tablename__ = "docs"
     
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     title = Column(String, nullable=False)
     content = Column(String, default="")
     created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    last_edited = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 # Chat Models
 class User(Base):
@@ -97,3 +105,18 @@ class ConsistencyLog(Base):
     date = Column(Date, unique=True, nullable=False, default=datetime.utcnow().date)
     energy_used = Column(Integer, default=0)
     total_capacity = Column(Integer, default=30)
+
+class LinkedTask(Base):
+    __tablename__ = "linked_tasks"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    title = Column(String, nullable=False)
+    description = Column(String)
+    source_type = Column(String, nullable=False) # 'email' or 'document'
+    source_email_id = Column(UUID(as_uuid=True), ForeignKey("emails.id"), nullable=True) 
+    source_doc_id = Column(UUID(as_uuid=True), ForeignKey("docs.id"), nullable=True) 
+    
+    status = Column(String, default='pending')
+    importance = Column(Integer, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)

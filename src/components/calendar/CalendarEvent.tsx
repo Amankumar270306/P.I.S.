@@ -18,7 +18,7 @@ export function CalendarEvent({ event }: CalendarEventProps) {
 
     const startHour = event.startTime.getHours();
     const startMinute = event.startTime.getMinutes();
-    const minutesFromStart = (startHour - 7) * 60 + startMinute; // 7 AM Start
+    const minutesFromStart = startHour * 60 + startMinute; // Midnight Start
     const top = Math.max(0, minutesFromStart * pixelsPerMinute);
 
     let bgClass = "bg-blue-100 border-blue-200 text-blue-800";

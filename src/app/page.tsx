@@ -70,14 +70,7 @@ export default function Home() {
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Left Column: Heatmap & Calendar */}
         <div className="lg:col-span-2 space-y-5">
-          <div className="bg-white p-5 rounded-xl border border-slate-200/60 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-bold text-slate-800">Productivity Pulse</h3>
-              <select className="text-xs bg-slate-50 border-none rounded-md text-slate-500 py-1 px-2 focus:ring-0">
-                <option>This Week</option>
-                <option>Last Week</option>
-              </select>
-            </div>
+          <div className="bg-white rounded-xl border border-slate-200/60 shadow-sm overflow-hidden">
             <ProductivityHeatmap />
           </div>
 

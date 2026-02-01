@@ -81,24 +81,8 @@ export function CalendarSidebar({ selectedDate = new Date(), onSelectDate }: Cal
                     <button className="text-xs text-slate-500 hover:text-slate-700">View all</button>
                 </div>
                 <div className="space-y-3">
-                    {[
-                        { title: "Project presentation", time: "08:30 - 10:30", color: "bg-emerald-500" },
-                        { title: "Design review", time: "11:40 - 12:10", color: "bg-slate-600" },
-                        { title: "Lunch break", time: "12:00 - 13:00", color: "bg-slate-600" },
-                        { title: "Leading a workshop", time: "13:00 - 15:00", color: "bg-slate-600" },
-                    ].map((event, i) => (
-                        <div key={i} className="flex items-start gap-3 group cursor-pointer">
-                            <div className={cn("mt-1 size-4 rounded border border-slate-200 flex items-center justify-center transition-colors", i === 0 && "bg-emerald-500 border-emerald-500")}>
-                                {i === 0 && <CheckSquare className="size-3 text-white" />}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <p className={cn("text-sm font-medium truncate transition-colors", i === 0 ? "text-slate-900" : "text-slate-500 group-hover:text-slate-700")}>
-                                    {event.title}
-                                </p>
-                                <p className="text-xs text-slate-400 mt-0.5">{event.time}</p>
-                            </div>
-                        </div>
-                    ))}
+                    {/* No upcoming events placeholder */}
+                    <div className="text-sm text-slate-500 italic">No upcoming events</div>
                 </div>
             </div>
 
@@ -109,22 +93,7 @@ export function CalendarSidebar({ selectedDate = new Date(), onSelectDate }: Cal
                     <button className="text-xs text-slate-500 hover:text-slate-700">View all</button>
                 </div>
                 <div className="space-y-4">
-                    {[
-                        { label: "Meeting", value: 65, color: "bg-blue-500" },
-                        { label: "Projects", value: 45, color: "bg-emerald-500" },
-                        { label: "Events", value: 20, color: "bg-rose-500" },
-                        { label: "Reviews", value: 35, color: "bg-indigo-500" },
-                    ].map((item, i) => (
-                        <div key={i} className="flex items-center gap-3">
-                            <span className="text-xs text-slate-500 w-16">{item.label}</span>
-                            <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                <div
-                                    className={cn("h-full rounded-full", item.color)}
-                                    style={{ width: `${item.value}%` }}
-                                />
-                            </div>
-                        </div>
-                    ))}
+                    <div className="text-sm text-slate-500 italic">No data available</div>
                 </div>
             </div>
 

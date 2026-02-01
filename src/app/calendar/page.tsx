@@ -8,40 +8,8 @@ import { CalendarSidebar } from "@/components/calendar/CalendarSidebar";
 import { CalendarEvent } from "@/types/calendar";
 import { cn } from "@/lib/utils";
 
-// Mock Data Generation (Updated to match new colored style)
 const generateMockEvents = (): CalendarEvent[] => {
-    const today = new Date();
-    const startOfCurrentWeek = startOfWeek(today, { weekStartsOn: 1 }); // Monday start
-
-    const createEvent = (dayOffset: number, hour: number, duration: number, title: string, energy: number): CalendarEvent => {
-        const date = addDays(startOfCurrentWeek, dayOffset);
-        const startTime = setMinutes(setHours(date, hour), 0);
-        return {
-            id: Math.random().toString(36).substr(2, 9),
-            title,
-            startTime,
-            durationMinutes: duration,
-            energyCost: energy,
-        };
-    };
-
-    return [
-        createEvent(0, 8, 50, "Client meeting", 4),        // Mon 8:00
-        createEvent(1, 8, 110, "Preparing project presentation", -1), // Tue 8:30 (Green/Recovery) - actually using negative for green in our logic
-        // Let's adjust mock data to match the visual logic we added in CalendarEvent (-1=Green, 4=Blue, 8=Red)
-        createEvent(1, 10, 60, "User flow testing", -1),     // Tue 10:00 Green
-        createEvent(2, 8, 50, "Client meeting", 5),        // Wed 8:00 Blue
-        createEvent(2, 9, 120, "Meetup preparation", 8),   // Wed 9:00 Red
-        createEvent(3, 8, 120, "Team retrospective", 4),   // Thu 8:00 Blue
-        createEvent(4, 8, 50, "Client meeting", -1),       // Fri 8:00 Green
-        createEvent(5, 8, 50, "Client meeting", 4),        // Sat 8:00 Blue
-        createEvent(6, 9, 120, "Design system work", -1),  // Sun 9:00 Green
-
-        createEvent(0, 13, 60, "Sync with developers", 4), // Mon 13:00 Blue
-        createEvent(1, 13, 120, "Leading a workshop", 8),  // Tue 13:00 Red
-        createEvent(3, 10, 75, "Design review with art director", 5), // Thu 10:30 Blue (Purple-ish in design, we use Blue)
-        createEvent(5, 14, 120, "Creating animations", -1), // Sat 14:00 Green
-    ];
+    return [];
 };
 
 export default function CalendarPage() {
@@ -55,7 +23,7 @@ export default function CalendarPage() {
 
     const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
     const weekDays = Array.from({ length: 7 }).map((_, i) => addDays(weekStart, i));
-    const timeSlots = Array.from({ length: 16 }).map((_, i) => i + 7); // 7 AM to 10 PM (16 slots)
+    const timeSlots = Array.from({ length: 24 }).map((_, i) => i); // 0 to 23 (24 slots)
 
     return (
         <div className="flex h-screen bg-white text-slate-900 overflow-hidden font-sans">
@@ -105,12 +73,12 @@ export default function CalendarPage() {
 
                 {/* Scrollable Grid */}
                 <div className="flex-1 overflow-y-auto relative px-4 pb-4">
-                    <div className="grid grid-cols-[60px_1fr] min-h-[960px]"> {/* 16 slots * 60px */}
+                    <div className="grid grid-cols-[60px_1fr] min-h-[1440px]"> {/* 24 slots * 60px */}
                         {/* Time Labels */}
                         <div className="relative border-r border-slate-100 mr-4">
                             {timeSlots.map((hour, i) => (
                                 <div key={hour} className="absolute w-full text-right pr-4 text-xs text-slate-400 transform -translate-y-1/2" style={{ top: `${i * 60}px` }}>
-                                    {hour > 12 ? `${hour - 12}:00 PM` : hour === 12 ? '12:00 PM' : `${hour}:00 AM`}
+                                    {hour === 0 ? '12:00 AM' : hour === 12 ? '12:00 PM' : hour > 12 ? `${hour - 12}:00 PM` : `${hour}:00 AM`}
                                 </div>
                             ))}
                         </div>
@@ -134,11 +102,12 @@ export default function CalendarPage() {
                                 return (
                                     <div key={day.toISOString()} className="relative h-full">
                                         {dayEvents.map(event => {
-                                            // Calculate Top offset based on 7 AM start
-                                            // 7 AM = 0px
+                                            // Calculate Top offset based on 00:00 start (Midnight)
+                                            // 00:00 = 0px
                                             const startHour = event.startTime.getHours();
                                             const startMinute = event.startTime.getMinutes();
-                                            const minutesFrom7AM = (startHour - 7) * 60 + startMinute;
+                                            // No offset subtraction needed as we start at 0
+                                            const minutesFromMidnight = startHour * 60 + startMinute;
 
                                             return (
                                                 <CalendarEventComponent key={event.id} event={event} />

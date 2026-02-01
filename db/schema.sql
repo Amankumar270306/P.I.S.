@@ -9,7 +9,6 @@ create table public.emails (
   subject text,
   sender text,
   received_at timestamptz,
-  is_processed boolean default false,
   created_at timestamptz default now(),
 
   unique(user_id, outlook_id) -- Prevent duplicates per user
@@ -39,6 +38,9 @@ create table public.tasks (
   energy_cost integer check (energy_cost >= 1 and energy_cost <= 10),
   context text, 
   deadline timestamptz,
+  started_at timestamptz,
+  ended_at timestamptz,
+  importance integer,
   linked_email_id uuid references public.emails(id),
   created_at timestamptz default now(),
   updated_at timestamptz default now()
@@ -118,3 +120,41 @@ with check (auth.uid() = user_id);
 create policy "Users can update their own energy logs" 
 on public.energy_logs for update 
 using (auth.uid() = user_id);
+
+
+-- 5. LINKED TASKS TABLE (Dependencies: auth.users, public.emails, public.docs)
+create table public.linked_tasks (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid references auth.users not null,
+  title text not null,
+  description text,
+  source_type text check (source_type in ('email', 'document')) not null,
+  source_email_id uuid references public.emails(id),
+  source_doc_id uuid references public.docs(id),
+  status text check (status in ('pending', 'converted', 'dismissed')) default 'pending',
+  created_at timestamptz default now(),
+
+  constraint check_source check (
+    (source_type = 'email' and source_email_id is not null) or 
+    (source_type = 'document' and source_doc_id is not null)
+  )
+);
+
+alter table public.linked_tasks enable row level security;
+
+create policy "Users can view their own linked tasks" 
+on public.linked_tasks for select 
+using (auth.uid() = user_id);
+
+create policy "Users can insert their own linked tasks" 
+on public.linked_tasks for insert 
+with check (auth.uid() = user_id);
+
+create policy "Users can update their own linked tasks" 
+on public.linked_tasks for update 
+using (auth.uid() = user_id);
+
+create policy "Users can delete their own linked tasks" 
+on public.linked_tasks for delete 
+using (auth.uid() = user_id);
+

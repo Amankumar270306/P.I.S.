@@ -20,6 +20,9 @@ class TaskBase(BaseModel):
     priority: Optional[str] = Field("Medium", description="Priority level: 'High', 'Medium', 'Low'.")
     deadline: Optional[datetime] = Field(None, description="The deadline for the task.")
     scheduled_date: Optional[datetime] = Field(None, description="The date this task is scheduled for.")
+    started_at: Optional[datetime] = Field(None, description="When the task was started.")
+    ended_at: Optional[datetime] = Field(None, description="When the task was completed.")
+    importance: Optional[int] = Field(None, description="Importance level.")
     status: Optional[str] = Field("todo", description="Current status: 'todo', 'in_progress', 'done'.")
 
 class TaskCreate(TaskBase):
@@ -32,6 +35,9 @@ class TaskUpdate(BaseModel):
     status: Optional[str] = None
     deadline: Optional[datetime] = None
     priority: Optional[str] = None
+    started_at: Optional[datetime] = None
+    ended_at: Optional[datetime] = None
+    importance: Optional[int] = None
 
 class TaskResponse(TaskBase):
     id: int
@@ -153,3 +159,29 @@ class ConsistencyLog(ConsistencyLogBase):
 
     class Config:
         from_attributes = True
+
+# --- Linked Task Schemas ---
+
+class SourceTypeEnum(str, Enum):
+    EMAIL = "email"
+    DOCUMENT = "document"
+
+class LinkedTaskBase(BaseModel):
+    title: str = Field(..., description="Title of the linked task.")
+    description: Optional[str] = Field(None, description="Description or summary.")
+    source_type: SourceTypeEnum = Field(..., description="Origin of the task.")
+    source_email_id: Optional[UUID] = Field(None, description="Linked Email ID.")
+    source_doc_id: Optional[UUID] = Field(None, description="Linked Doc ID.")
+    status: Optional[str] = Field("pending", description="Status: pending, converted, dismissed.")
+    importance: Optional[int] = Field(None, description="Estimated importance.")
+
+class LinkedTaskCreate(LinkedTaskBase):
+    user_id: uuid.UUID
+
+class LinkedTaskResponse(LinkedTaskBase):
+    id: UUID
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
