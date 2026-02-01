@@ -59,7 +59,7 @@ export default function Home() {
       {/* Stats Row */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-5">
         <div className="md:col-span-1">
-          <EnergyMeter currentEnergy={0} maxEnergy={40} />
+          <EnergyMeter currentEnergy={0} maxEnergy={30} />
         </div>
         <div className="md:col-span-2">
           <StatCards />

@@ -1,7 +1,7 @@
 from datetime import date, datetime, timedelta
 import models
 
-def optimize_schedule(tasks, daily_limit=40, current_load=0):
+def optimize_schedule(tasks, daily_limit=30, current_load=0):
     """
     Heuristic-based scheduling algorithm.
     Returns (scheduled_tasks, backlog_tasks)

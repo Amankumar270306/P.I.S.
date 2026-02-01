@@ -97,7 +97,7 @@ create table public.energy_logs (
   id uuid primary key default uuid_generate_v4(),
   user_id uuid references auth.users not null,
   date date not null default CURRENT_DATE,
-  total_capacity integer default 40,
+  total_capacity integer default 30,
   used_capacity integer default 0,
   mood_score integer check (mood_score >= 1 and mood_score <= 5),
   created_at timestamptz default now(),

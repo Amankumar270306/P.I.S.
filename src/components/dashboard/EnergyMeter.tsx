@@ -5,7 +5,7 @@ interface EnergyMeterProps {
     maxEnergy?: number;
 }
 
-export function EnergyMeter({ currentEnergy, maxEnergy = 40 }: EnergyMeterProps) {
+export function EnergyMeter({ currentEnergy, maxEnergy = 30 }: EnergyMeterProps) {
     const percentage = Math.min(100, Math.max(0, (currentEnergy / maxEnergy) * 100));
 
     let colorClass = "bg-emerald-500";

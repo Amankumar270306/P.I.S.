@@ -40,7 +40,7 @@ class EnergyLog(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     date = Column(DateTime, default=datetime.utcnow)
-    capacity = Column(Integer, default=40)
+    capacity = Column(Integer, default=30)
     used = Column(Integer, default=0)
     reason = Column(String)
 
@@ -96,4 +96,4 @@ class ConsistencyLog(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
     date = Column(Date, unique=True, nullable=False, default=datetime.utcnow().date)
     energy_used = Column(Integer, default=0)
-    total_capacity = Column(Integer, default=40)
+    total_capacity = Column(Integer, default=30)
