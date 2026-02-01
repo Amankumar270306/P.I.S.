@@ -5,8 +5,20 @@ import { ChevronLeft, ChevronRight, CheckSquare, Clock, ChevronDown } from "luci
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, endOfWeek, isSameMonth, isSameDay, addMonths, subMonths } from "date-fns";
 import { cn } from "@/lib/utils";
 
-export function CalendarSidebar() {
-    const [currentMonth, setCurrentMonth] = React.useState(new Date());
+interface CalendarSidebarProps {
+    selectedDate?: Date;
+    onSelectDate?: (date: Date) => void;
+}
+
+export function CalendarSidebar({ selectedDate = new Date(), onSelectDate }: CalendarSidebarProps) {
+    const [currentMonth, setCurrentMonth] = React.useState(selectedDate);
+
+    // Update current month when selectedDate changes (optional, but good UX to jump to selected)
+    React.useEffect(() => {
+        if (selectedDate) {
+            setCurrentMonth(selectedDate);
+        }
+    }, [selectedDate]);
 
     const days = React.useMemo(() => {
         const start = startOfWeek(startOfMonth(currentMonth), { weekStartsOn: 1 });
@@ -41,15 +53,18 @@ export function CalendarSidebar() {
                 <div className="grid grid-cols-7 gap-1 text-center text-sm">
                     {days.map((day, i) => {
                         const isCurrentMonth = isSameMonth(day, currentMonth);
+                        const isSelected = isSameDay(day, selectedDate);
                         const isToday = isSameDay(day, new Date());
 
                         return (
                             <button
                                 key={day.toISOString()}
+                                onClick={() => onSelectDate?.(day)}
                                 className={cn(
                                     "aspect-square flex items-center justify-center rounded-full hover:bg-slate-100 transition-colors relative",
                                     !isCurrentMonth && "text-slate-300",
-                                    isToday && "bg-slate-900 text-white font-bold hover:bg-slate-800"
+                                    isSelected && "bg-indigo-600 text-white font-bold hover:bg-indigo-700",
+                                    !isSelected && isToday && "bg-slate-900 text-white font-bold hover:bg-slate-800"
                                 )}
                             >
                                 {format(day, "d")}

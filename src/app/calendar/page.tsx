@@ -165,7 +165,7 @@ export default function CalendarPage() {
                 )}
             >
                 <div className="w-[300px] h-full"> {/* Inner container to prevent content layout shift during transition */}
-                    <CalendarSidebar />
+                    <CalendarSidebar selectedDate={currentDate} onSelectDate={setCurrentDate} />
                 </div>
             </div>
         </div>
