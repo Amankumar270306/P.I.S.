@@ -1,11 +1,15 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { loginUser, registerUser, UserLoginDTO, UserCreateDTO, UserProfile } from "./api";
 
 interface User {
     id: string;
     email: string;
     name?: string;
+    phone?: string;
+    age?: number;
+    profession?: string;
 }
 
 interface AuthContextType {
@@ -14,6 +18,7 @@ interface AuthContextType {
     login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
     register: (email: string, password: string, name: string) => Promise<{ success: boolean; error?: string }>;
     logout: () => void;
+    setUser: (user: User | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -31,31 +36,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsLoading(false);
     }, []);
 
+    // Save user to localStorage whenever it changes
+    const updateUser = (newUser: User | null) => {
+        setUser(newUser);
+        if (newUser) {
+            localStorage.setItem("pis_user", JSON.stringify(newUser));
+        } else {
+            localStorage.removeItem("pis_user");
+        }
+    };
+
     const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
         setIsLoading(true);
         try {
-            // Simulate API call - replace with actual Supabase auth later
-            await new Promise(resolve => setTimeout(resolve, 1000));
-
-            // For demo: accept any email/password with basic validation
-            if (!email.includes("@")) {
-                return { success: false, error: "Invalid email format" };
-            }
-            if (password.length < 6) {
-                return { success: false, error: "Password must be at least 6 characters" };
-            }
+            const response = await loginUser({ email, password });
 
             const newUser: User = {
-                id: crypto.randomUUID(),
-                email,
-                name: email.split("@")[0]
+                id: response.user.id,
+                email: response.user.email,
+                name: response.user.username,
+                phone: response.user.phone,
+                age: response.user.age,
+                profession: response.user.profession
             };
 
-            setUser(newUser);
-            localStorage.setItem("pis_user", JSON.stringify(newUser));
+            updateUser(newUser);
             return { success: true };
-        } catch (error) {
-            return { success: false, error: "Login failed. Please try again." };
+        } catch (error: any) {
+            const errorMessage = error.response?.data?.detail || "Login failed. Please try again.";
+            return { success: false, error: errorMessage };
         } finally {
             setIsLoading(false);
         }
@@ -64,42 +73,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const register = async (email: string, password: string, name: string): Promise<{ success: boolean; error?: string }> => {
         setIsLoading(true);
         try {
-            // Simulate API call - replace with actual Supabase auth later
-            await new Promise(resolve => setTimeout(resolve, 1000));
-
-            if (!email.includes("@")) {
-                return { success: false, error: "Invalid email format" };
-            }
-            if (password.length < 6) {
-                return { success: false, error: "Password must be at least 6 characters" };
-            }
-            if (!name.trim()) {
-                return { success: false, error: "Name is required" };
-            }
+            const response = await registerUser({
+                username: name,
+                email,
+                password
+            });
 
             const newUser: User = {
-                id: crypto.randomUUID(),
-                email,
-                name
+                id: response.id,
+                email: response.email,
+                name: response.username,
+                phone: response.phone,
+                age: response.age,
+                profession: response.profession
             };
 
-            setUser(newUser);
-            localStorage.setItem("pis_user", JSON.stringify(newUser));
+            updateUser(newUser);
             return { success: true };
-        } catch (error) {
-            return { success: false, error: "Registration failed. Please try again." };
+        } catch (error: any) {
+            const errorMessage = error.response?.data?.detail || "Registration failed. Please try again.";
+            return { success: false, error: errorMessage };
         } finally {
             setIsLoading(false);
         }
     };
 
     const logout = () => {
-        setUser(null);
-        localStorage.removeItem("pis_user");
+        updateUser(null);
     };
 
     return (
-        <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
+        <AuthContext.Provider value={{ user, isLoading, login, register, logout, setUser: updateUser }}>
             {children}
         </AuthContext.Provider>
     );

@@ -21,8 +21,11 @@ services:
       - db
     environment:
       DATABASE_URL: postgresql://postgres:postgrespassword@db:5432/pis
-      AI_MODEL_URL: ${AI_MODEL_URL}
-      AI_API_KEY: ${AI_API_KEY}
+      AI_MODEL_URL: ${AI_MODEL_URL:-http://host.docker.internal:11434/v1/chat/completions}
+      AI_MODEL_NAME: ${AI_MODEL_NAME:-llama3.1:8b}
+      AI_API_KEY: ${AI_API_KEY:-}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "8000:8000"
     restart: always

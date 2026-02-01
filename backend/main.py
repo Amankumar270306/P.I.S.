@@ -31,8 +31,94 @@ app.include_router(direct_db.router)
 # --- CRUD Endpoints ---
 
 import uuid as uuid_module
+import hashlib
 
-# Hardcoded default user ID for "aman" in auth.users
+# Simple password hashing (in production use bcrypt)
+def hash_password(password: str) -> str:
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def verify_password(plain: str, hashed: str) -> bool:
+    return hash_password(plain) == hashed
+
+# Store current user ID (will be set on login)
+current_user_id: Optional[uuid_module.UUID] = None
+
+# --- User Authentication Endpoints ---
+
+@app.post("/auth/register", response_model=schemas.UserResponse, summary="Register a new user")
+def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    """Register a new user account."""
+    # Check if email already exists
+    if db.query(models.User).filter(models.User.email == user.email).first():
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    # Check if phone already exists
+    if user.phone and db.query(models.User).filter(models.User.phone == user.phone).first():
+        raise HTTPException(status_code=400, detail="Phone number already registered")
+    
+    # Create user with hashed password
+    db_user = models.User(
+        username=user.username,
+        email=user.email,
+        phone=user.phone,
+        password=hash_password(user.password),
+        age=user.age,
+        profession=user.profession
+    )
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+@app.post("/auth/login", response_model=schemas.UserLoginResponse, summary="Login user")
+def login_user(credentials: schemas.UserLogin, db: Session = Depends(get_db)):
+    """Login with email and password."""
+    user = db.query(models.User).filter(models.User.email == credentials.email).first()
+    
+    if not user or not verify_password(credentials.password, user.password):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    
+    global current_user_id
+    current_user_id = user.id
+    
+    return {"user": user, "message": "Login successful"}
+
+@app.get("/auth/me", response_model=schemas.UserResponse, summary="Get current user profile")
+def get_current_user(db: Session = Depends(get_db)):
+    """Get the currently logged in user's profile."""
+    if not current_user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    user = db.query(models.User).filter(models.User.id == current_user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return user
+
+@app.get("/users/{user_id}", response_model=schemas.UserResponse, summary="Get user by ID")
+def get_user(user_id: uuid_module.UUID, db: Session = Depends(get_db)):
+    """Get user profile by ID."""
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+@app.patch("/users/{user_id}", response_model=schemas.UserResponse, summary="Update user profile")
+def update_user(user_id: uuid_module.UUID, user_update: schemas.UserUpdate, db: Session = Depends(get_db)):
+    """Update user profile information."""
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    update_data = user_update.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(user, key, value)
+    
+    db.commit()
+    db.refresh(user)
+    return user
+
+# Default user ID for backwards compatibility
 DEFAULT_USER_ID = uuid_module.UUID("5a739fce-9d21-4be2-970a-4b3aa52133a8")
 
 # --- Task List Endpoints ---
@@ -244,14 +330,14 @@ def create_document(doc: schemas.DocumentCreate, db: Session = Depends(get_db)):
     return db_doc
 
 @app.get("/documents/{doc_id}", response_model=schemas.Document, summary="Get a document")
-def read_document(doc_id: int, db: Session = Depends(get_db)):
+def read_document(doc_id: uuid_module.UUID, db: Session = Depends(get_db)):
     db_doc = db.query(models.Document).filter(models.Document.id == doc_id).first()
     if not db_doc:
         raise HTTPException(status_code=404, detail="Document not found")
     return db_doc
 
 @app.put("/documents/{doc_id}", response_model=schemas.Document, summary="Update a document")
-def update_document(doc_id: int, doc_update: schemas.DocumentUpdate, db: Session = Depends(get_db)):
+def update_document(doc_id: uuid_module.UUID, doc_update: schemas.DocumentUpdate, db: Session = Depends(get_db)):
     db_doc = db.query(models.Document).filter(models.Document.id == doc_id).first()
     if not db_doc:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -266,7 +352,7 @@ def update_document(doc_id: int, doc_update: schemas.DocumentUpdate, db: Session
     return db_doc
 
 @app.delete("/documents/{doc_id}", summary="Delete a document")
-def delete_document(doc_id: int, db: Session = Depends(get_db)):
+def delete_document(doc_id: uuid_module.UUID, db: Session = Depends(get_db)):
     db_doc = db.query(models.Document).filter(models.Document.id == doc_id).first()
     if not db_doc:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -275,58 +361,7 @@ def delete_document(doc_id: int, db: Session = Depends(get_db)):
     db.commit()
     return {"message": "Document deleted"}
 
-# --- Integration Endpoints ---
-
-@app.post("/integrations/outlook/webhook", response_model=schemas.IntegrationResponse, summary="Outlook Email Webhook")
-def outlook_webhook(payload: schemas.EmailPayload, db: Session = Depends(get_db)):
-    """
-    Receives email data. If 'Urgent' or 'Deadline' is in the subject, 
-    automatically creates a high-priority task.
-    """
-    keywords = ["Urgent", "Deadline", "ASAP"]
-    is_urgent = any(k.lower() in payload.subject.lower() for k in keywords)
-
-    if is_urgent:
-        # Create Task
-        new_task = models.Task(
-            title=f"Email: {payload.subject}",
-            energy_cost=7, # Default high cost
-            context="ADMIN",
-            status="todo"
-        )
-        db.add(new_task)
-        db.commit()
-        db.refresh(new_task)
-        
-        return {"action_taken": "task_created", "task_id": new_task.id}
-    
-    return {"action_taken": "ignored"}
-
-@app.post("/integrations/notion/sync", response_model=schemas.IntegrationResponse, summary="Notion Page Sync")
-def notion_sync(payload: schemas.NotionSyncPayload, db: Session = Depends(get_db)):
-    """
-    Syncs Notion pages to P.I.S. Tasks.
-    Only imports 'In Progress' pages that don't exist yet (mock check).
-    """
-    count = 0
-    for page in payload.pages:
-        # Simplistic check: Title search. Real world needs Notion ID storage.
-        exists = db.query(models.Task).filter(models.Task.title == page.title).first()
-        
-        if not exists and page.status == "In Progress":
-            new_task = models.Task(
-                title=page.title,
-                energy_cost=5,
-                context="DEEP_WORK",
-                status="in_progress"
-            )
-            db.add(new_task)
-            count += 1
-            
-    if count > 0:
-        db.commit()
-    
-    return {"action_taken": f"synced_{count}_tasks"}
+# --- Energy Endpoints ---
 
 @app.post("/energy/log", response_model=schemas.IntegrationResponse, summary="Log Energy Transaction")
 def log_energy(payload: schemas.EnergyTransaction, db: Session = Depends(get_db)):

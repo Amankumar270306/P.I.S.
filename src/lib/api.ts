@@ -44,6 +44,44 @@ export interface SystemState {
     overdue_tasks: number;
 }
 
+// User Types
+export interface UserProfile {
+    id: string;
+    username: string;
+    email: string;
+    phone?: string;
+    age?: number;
+    profession?: string;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface UserCreateDTO {
+    username: string;
+    email: string;
+    password: string;
+    phone?: string;
+    age?: number;
+    profession?: string;
+}
+
+export interface UserUpdateDTO {
+    username?: string;
+    phone?: string;
+    age?: number;
+    profession?: string;
+}
+
+export interface UserLoginDTO {
+    email: string;
+    password: string;
+}
+
+export interface UserLoginResponse {
+    user: UserProfile;
+    message: string;
+}
+
 // Axios Instance
 const api = axios.create({
     baseURL: 'http://localhost:8000',
@@ -51,6 +89,32 @@ const api = axios.create({
         'Content-Type': 'application/json',
     },
 });
+
+// User API Functions
+export const registerUser = async (data: UserCreateDTO): Promise<UserProfile> => {
+    const response = await api.post<UserProfile>('/auth/register', data);
+    return response.data;
+};
+
+export const loginUser = async (data: UserLoginDTO): Promise<UserLoginResponse> => {
+    const response = await api.post<UserLoginResponse>('/auth/login', data);
+    return response.data;
+};
+
+export const getCurrentUser = async (): Promise<UserProfile> => {
+    const response = await api.get<UserProfile>('/auth/me');
+    return response.data;
+};
+
+export const getUserById = async (userId: string): Promise<UserProfile> => {
+    const response = await api.get<UserProfile>(`/users/${userId}`);
+    return response.data;
+};
+
+export const updateUser = async (userId: string, data: UserUpdateDTO): Promise<UserProfile> => {
+    const response = await api.patch<UserProfile>(`/users/${userId}`, data);
+    return response.data;
+};
 
 // Mappers
 const mapToDomain = (dto: TaskDTO): Task => ({
@@ -159,6 +223,23 @@ export const deleteTask = async (id: string): Promise<void> => {
     await api.delete(`/tasks/${id}`);
 };
 
+// Energy API
+export interface EnergyStatus {
+    date: string;
+    capacity: number;
+    used: number;
+    remaining: number;
+}
+
+export const getTodayEnergy = async (): Promise<EnergyStatus> => {
+    const response = await api.get<EnergyStatus>('/energy/today');
+    return response.data;
+};
+
+export const resetTodayEnergy = async (): Promise<void> => {
+    await api.post('/energy/reset');
+};
+
 export const getSystemState = async (): Promise<SystemState> => {
     const response = await api.get<SystemState>('/system/state');
     return response.data;
@@ -245,11 +326,11 @@ export const logConsistency = async (data: { user_id: string; date: string; ener
 
 // --- Document API ---
 export interface Document {
-    id: number;
+    id: string;  // UUID
     title: string;
-    content: string;
+    content: any; // JSONB content (Tiptap JSON or null)
     created_at: string;
-    updated_at: string;
+    last_edited: string;
 }
 
 export const getDocuments = async (): Promise<Document[]> => {
@@ -257,16 +338,16 @@ export const getDocuments = async (): Promise<Document[]> => {
     return response.data;
 };
 
-export const createDocument = async (title: string, content: string = ""): Promise<Document> => {
+export const createDocument = async (title: string, content: object | null = null): Promise<Document> => {
     const response = await api.post('/documents/', { title, content });
     return response.data;
 };
 
-export const updateDocument = async (id: number, data: Partial<Document>): Promise<Document> => {
+export const updateDocument = async (id: string, data: Partial<Document>): Promise<Document> => {
     const response = await api.put(`/documents/${id}`, data);
     return response.data;
 };
 
-export const deleteDocument = async (id: number): Promise<void> => {
+export const deleteDocument = async (id: string): Promise<void> => {
     await api.delete(`/documents/${id}`);
 };

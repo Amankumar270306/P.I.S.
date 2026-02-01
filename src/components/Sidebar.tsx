@@ -3,14 +3,13 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Command, Inbox, FileText, Settings, Calendar, User, PanelLeftClose, PanelLeftOpen, ListTodo, LogOut, Network, MessageSquare } from 'lucide-react';
+import { Command, FileText, Settings, Calendar, User, PanelLeftClose, PanelLeftOpen, ListTodo, LogOut, Network, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DailyReviewModal } from './review/DailyReviewModal';
 import { useAuth } from '@/lib/auth-context';
 
 const navItems = [
     { name: 'Command Center', href: '/', icon: Command },
-    { name: 'Inbox', href: '/inbox', icon: Inbox },
     { name: 'Tasks', href: '/tasks', icon: ListTodo },
     { name: 'Chat', href: '/chat', icon: MessageSquare },
     { name: 'Project Map', href: '/map', icon: Network },

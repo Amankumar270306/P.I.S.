@@ -1,7 +1,5 @@
 from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional
-from pydantic import BaseModel, Field, EmailStr
-from typing import List, Optional
+from typing import Optional, List, Any
 from enum import Enum
 from datetime import datetime
 import uuid
@@ -70,20 +68,97 @@ class SystemState(BaseModel):
     pending_tasks: int = Field(..., description="Count of tasks in 'todo' status.")
     overdue_tasks: int = Field(..., description="Count of tasks past their deadline.")
 
+# --- User Profile Schemas ---
+
+class UserBase(BaseModel):
+    username: str = Field(..., description="User's display name")
+    email: str = Field(..., description="User's email address")
+    phone: Optional[str] = Field(None, description="User's phone number")
+    age: Optional[int] = Field(None, description="User's age")
+    profession: Optional[str] = Field(None, description="User's profession")
+
+class UserCreate(UserBase):
+    password: str = Field(..., min_length=6, description="User's password")
+
+class UserUpdate(BaseModel):
+    username: Optional[str] = None
+    phone: Optional[str] = None
+    age: Optional[int] = None
+    profession: Optional[str] = None
+
+class UserResponse(UserBase):
+    id: UUID
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+class UserLogin(BaseModel):
+    email: str
+    password: str
+
+class UserLoginResponse(BaseModel):
+    user: UserResponse
+    message: str
+
+# --- Document Schemas ---
+
+class DocumentBase(BaseModel):
+    title: str
+    content: Optional[Any] = None  # JSONB content
+
+class DocumentCreate(DocumentBase):
+    pass
+
+class DocumentUpdate(BaseModel):
+    title: Optional[str] = None
+    content: Optional[Any] = None
+
+class Document(DocumentBase):
+    id: UUID
+    created_at: datetime
+    last_edited: datetime
+    
+    model_config = ConfigDict(from_attributes=True)
+
+# --- Consistency Schemas ---
+
+class ConsistencyLogBase(BaseModel):
+    date: datetime
+    energy_used: int
+    total_capacity: int
+
+class ConsistencyLogCreate(ConsistencyLogBase):
+    user_id: uuid.UUID
+
+class ConsistencyLog(ConsistencyLogBase):
+    id: int
+    user_id: uuid.UUID
+
+    model_config = ConfigDict(from_attributes=True)
+
+# --- Linked Task Schemas ---
+
+class SourceTypeEnum(str, Enum):
+    DOCUMENT = "document"
+
+class LinkedTaskBase(BaseModel):
+    title: str = Field(..., description="Title of the linked task.")
+    description: Optional[str] = Field(None, description="Description or summary.")
+    source_type: SourceTypeEnum = Field(..., description="Origin of the task.")
+    source_doc_id: Optional[UUID] = Field(None, description="Linked Doc ID.")
+    status: Optional[str] = Field("pending", description="Status: pending, converted, dismissed.")
+
+class LinkedTaskCreate(LinkedTaskBase):
+    user_id: uuid.UUID
+
+class LinkedTaskResponse(LinkedTaskBase):
+    id: UUID
+    created_at: datetime
+    
+    model_config = ConfigDict(from_attributes=True)
+
 # --- Integration Schemas ---
-
-class EmailPayload(BaseModel):
-    subject: str = Field(..., description="Subject line of the email.")
-    sender: str = Field(..., description="Email address of the sender.")
-    body: Optional[str] = Field(None, description="Body content of the email.")
-
-class NotionPage(BaseModel):
-    id: str = Field(..., description="Notion Page ID")
-    title: str = Field(..., description="Page Title")
-    status: str = Field(..., description="Status property from Notion")
-
-class NotionSyncPayload(BaseModel):
-    pages: list[NotionPage]
 
 class EnergyTransaction(BaseModel):
     amount: int = Field(..., description="Energy amount to change (negative for deduction).")
@@ -102,18 +177,17 @@ class ChatResponse(BaseModel):
 
 # --- Team Chat Schemas ---
 
-class UserBase(BaseModel):
+class ChatUserBase(BaseModel):
     username: str
 
-class UserCreate(UserBase):
+class ChatUserCreate(ChatUserBase):
     pass
 
-class User(UserBase):
+class User(ChatUserBase):
     id: uuid.UUID
     avatar_url: Optional[str] = None
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class MessageBase(BaseModel):
     content: str
@@ -128,8 +202,7 @@ class Message(MessageBase):
     sender_id: uuid.UUID
     created_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class ChannelBase(BaseModel):
     name: Optional[str] = None
@@ -137,71 +210,6 @@ class ChannelBase(BaseModel):
 
 class Channel(ChannelBase):
     id: uuid.UUID
-    last_message: Optional[Message] = None # Helper for UI
+    last_message: Optional[Message] = None
     
-    class Config:
-        from_attributes = True
-
-# --- Document Schemas ---
-
-class DocumentBase(BaseModel):
-    title: str
-    content: Optional[str] = ""
-
-class DocumentCreate(DocumentBase):
-    pass
-
-class DocumentUpdate(BaseModel):
-    title: Optional[str] = None
-    content: Optional[str] = None
-
-class Document(DocumentBase):
-    id: int
-    created_at: datetime
-    updated_at: datetime
-    
-    class Config:
-        from_attributes = True
-
-# --- Consistency Schemas ---
-
-class ConsistencyLogBase(BaseModel):
-    date: datetime
-    energy_used: int
-    total_capacity: int
-
-class ConsistencyLogCreate(ConsistencyLogBase):
-    user_id: uuid.UUID
-
-class ConsistencyLog(ConsistencyLogBase):
-    id: int
-    user_id: uuid.UUID
-
-    class Config:
-        from_attributes = True
-
-# --- Linked Task Schemas ---
-
-class SourceTypeEnum(str, Enum):
-    EMAIL = "email"
-    DOCUMENT = "document"
-
-class LinkedTaskBase(BaseModel):
-    title: str = Field(..., description="Title of the linked task.")
-    description: Optional[str] = Field(None, description="Description or summary.")
-    source_type: SourceTypeEnum = Field(..., description="Origin of the task.")
-    source_email_id: Optional[UUID] = Field(None, description="Linked Email ID.")
-    source_doc_id: Optional[UUID] = Field(None, description="Linked Doc ID.")
-    status: Optional[str] = Field("pending", description="Status: pending, converted, dismissed.")
-    importance: Optional[int] = Field(None, description="Estimated importance.")
-
-class LinkedTaskCreate(LinkedTaskBase):
-    user_id: uuid.UUID
-
-class LinkedTaskResponse(LinkedTaskBase):
-    id: UUID
-    created_at: datetime
-    
-    class Config:
-        from_attributes = True
-
+    model_config = ConfigDict(from_attributes=True)

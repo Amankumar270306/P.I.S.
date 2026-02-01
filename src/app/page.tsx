@@ -7,12 +7,22 @@ import { SmartInput } from "@/components/tasks/SmartInput";
 import { ConsistencyGraph } from "@/components/dashboard/ConsistencyGraph";
 import { useFocus } from "@/context/FocusContext";
 import { useState, useEffect } from "react";
-import { createTask, getTasks } from "@/lib/api";
+import { createTask, getTasks, getTodayEnergy, EnergyStatus } from "@/lib/api";
 import { Task } from "@/types/task";
 
 export default function Home() {
   const { startSession } = useFocus();
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [energy, setEnergy] = useState<EnergyStatus>({ date: '', capacity: 30, used: 0, remaining: 30 });
+
+  const fetchEnergy = async () => {
+    try {
+      const data = await getTodayEnergy();
+      setEnergy(data);
+    } catch (e) {
+      console.error("Failed to fetch energy", e);
+    }
+  };
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -24,6 +34,7 @@ export default function Home() {
       }
     };
     fetchTasks();
+    fetchEnergy();
   }, []);
 
   const handleCreateTask = async (task: {
@@ -76,8 +87,13 @@ export default function Home() {
         isUrgent: task.isUrgent
       });
       setTasks(prev => [newTask, ...prev].slice(0, 5));
-    } catch (e) {
+      fetchEnergy(); // Refresh energy after task creation
+    } catch (e: any) {
       console.error("Failed to create task", e);
+      // Show error to user if energy limit exceeded
+      if (e.response?.data?.detail) {
+        alert(e.response.data.detail);
+      }
     }
   };
 
@@ -100,7 +116,7 @@ export default function Home() {
       {/* Stats Row */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-5">
         <div className="md:col-span-1">
-          <EnergyMeter currentEnergy={0} maxEnergy={30} />
+          <EnergyMeter currentEnergy={energy.used} maxEnergy={energy.capacity} />
         </div>
         <div className="md:col-span-2">
           <StatCards />

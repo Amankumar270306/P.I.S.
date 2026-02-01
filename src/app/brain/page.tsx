@@ -9,7 +9,7 @@ import { getDocuments, createDocument, updateDocument, deleteDocument, Document 
 
 export default function DocsPage() {
     const [documents, setDocuments] = useState<Document[]>([]);
-    const [selectedDocId, setSelectedDocId] = useState<number | null>(null);
+    const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
 
@@ -44,7 +44,7 @@ export default function DocsPage() {
         }
     };
 
-    const handleDeleteDoc = async (e: React.MouseEvent, id: number) => {
+    const handleDeleteDoc = async (e: React.MouseEvent, id: string) => {
         e.stopPropagation();
         if (!confirm("Delete this document?")) return;
 
@@ -56,26 +56,6 @@ export default function DocsPage() {
             }
         } catch (error) {
             console.error("Failed to delete doc", error);
-        }
-    };
-
-    const handleGenerateDemo = async () => {
-        setIsLoading(true);
-        try {
-            const demoDocs = [
-                { title: "Project Alpha Strategy", content: "<h2>Visio Goals</h2><p>Our goal is to revolutionize the industry with AI-driven insights.</p>" },
-                { title: "Meeting Notes: Q1 Planning", content: "<h2>Attendees</h2><ul><li>Alice</li><li>Bob</li></ul><p>Next steps: define roadmap.</p>" },
-                { title: "Research: Neural Architectures", content: "<p>Deep learning models require significant compute...</p>" }
-            ];
-
-            for (const doc of demoDocs) {
-                await createDocument(doc.title, doc.content);
-            }
-            await loadDocuments();
-        } catch (error) {
-            console.error("Failed to generate demo docs", error);
-        } finally {
-            setIsLoading(false);
         }
     };
 
@@ -104,13 +84,8 @@ export default function DocsPage() {
                         <div className="text-center py-4 text-slate-400 text-sm">Loading stack...</div>
                     ) : documents.length === 0 ? (
                         <div className="text-center py-8 text-slate-400 text-sm px-4">
-                            <p className="mb-4">Empty brain.</p>
-                            <button
-                                onClick={handleGenerateDemo}
-                                className="w-full py-2 px-3 text-xs bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 font-medium transition-colors border border-indigo-200"
-                            >
-                                Generate Demo Docs
-                            </button>
+                            <p>No documents yet.</p>
+                            <p className="mt-2 text-xs">Click the + button above to create one.</p>
                         </div>
                     ) : (
                         documents.map(doc => (
