@@ -24,3 +24,8 @@ watchfiles==1.1.1
 websockets==16.0
 
 psycopg2-binary==2.9.9
+
+# LangGraph AI Agent
+langchain-core>=0.3.0
+langchain-ollama>=0.2.0
+langgraph>=0.2.0

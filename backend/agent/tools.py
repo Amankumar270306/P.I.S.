@@ -1,53 +1,50 @@
 """
-AI Agent Tools for P.I.S.
+AI Agent Tools for P.I.S. using LangChain.
 These tools allow the AI to interact with the system to manage tasks, read documents, etc.
 """
 
+from langchain_core.tools import tool
 from sqlalchemy.orm import Session
 from datetime import datetime, date, timedelta
-from typing import Optional, List
+from typing import Optional, List, Annotated
 import json
-import models
 import uuid as uuid_module
 
+# Global database session (set by the agent before invoking)
+_db_session: Session = None
 
+def set_db_session(db: Session):
+    """Set the database session for tools to use."""
+    global _db_session
+    _db_session = db
+
+def get_db():
+    """Get the current database session."""
+    global _db_session
+    if _db_session is None:
+        raise RuntimeError("Database session not set. Call set_db_session first.")
+    return _db_session
+
+
+@tool
 def create_task(
-    db: Session,
-    title: str,
-    energy_cost: int = 5,
-    priority: str = "Medium",
-    context: str = None,
-    deadline: str = None,
-    scheduled_date: str = None,
-    started_at: str = None,
-    ended_at: str = None,
-    importance: bool = False,
-    is_urgent: bool = False,
-    list_id: str = None
-) -> dict:
-    """
-    Create a new task with all available options.
+    title: Annotated[str, "The task title"],
+    energy_cost: Annotated[int, "Energy cost 1-10, default 5"] = 5,
+    priority: Annotated[str, "Priority: High, Medium, or Low"] = "Medium",
+    context: Annotated[Optional[str], "Additional notes"] = None,
+    deadline: Annotated[Optional[str], "Deadline in ISO format"] = None,
+    scheduled_date: Annotated[Optional[str], "Scheduled date in ISO format"] = None,
+    importance: Annotated[bool, "Is this important?"] = False,
+    is_urgent: Annotated[bool, "Is this urgent?"] = False
+) -> str:
+    """Create a new task with the given details."""
+    import models
+    from main import DEFAULT_USER_ID
     
-    Args:
-        title: The task title (required)
-        energy_cost: Energy cost 1-10 (default 5)
-        priority: "High", "Medium", or "Low"
-        context: Additional context/notes
-        deadline: ISO format deadline date
-        scheduled_date: ISO format scheduled date
-        started_at: ISO format start time
-        ended_at: ISO format end time
-        importance: Is this important?
-        is_urgent: Is this urgent?
-        list_id: Optional task list UUID
-    """
+    db = get_db()
     try:
-        # Parse dates if provided
         deadline_dt = datetime.fromisoformat(deadline) if deadline else None
         scheduled_dt = datetime.fromisoformat(scheduled_date) if scheduled_date else None
-        started_dt = datetime.fromisoformat(started_at) if started_at else None
-        ended_dt = datetime.fromisoformat(ended_at) if ended_at else None
-        list_uuid = uuid_module.UUID(list_id) if list_id else None
         
         new_task = models.Task(
             title=title,
@@ -56,86 +53,83 @@ def create_task(
             context=context,
             deadline=deadline_dt,
             scheduled_date=scheduled_dt,
-            started_at=started_dt,
-            ended_at=ended_dt,
             importance=importance,
             is_urgent=is_urgent,
-            list_id=list_uuid,
-            status="todo"
+            status="todo",
+            user_id=DEFAULT_USER_ID
         )
         db.add(new_task)
         db.commit()
         db.refresh(new_task)
         
-        return {
-            "success": True,
-            "message": f"Task '{title}' created successfully",
-            "task_id": str(new_task.id),
-            "energy_cost": new_task.energy_cost
-        }
+        return f"Task '{title}' created successfully (ID: {new_task.id}, Energy: {new_task.energy_cost})"
     except Exception as e:
         db.rollback()
-        return {"success": False, "error": str(e)}
+        return f"Error creating task: {str(e)}"
 
 
-def delete_task(db: Session, task_id: str) -> dict:
+@tool
+def delete_task(task_id: Annotated[str, "The task UUID to delete"]) -> str:
     """Delete a task by its ID."""
+    import models
+    
+    db = get_db()
     try:
         task = db.query(models.Task).filter(models.Task.id == uuid_module.UUID(task_id)).first()
         if not task:
-            return {"success": False, "error": "Task not found"}
+            return "Task not found"
         
         title = task.title
         db.delete(task)
         db.commit()
-        return {"success": True, "message": f"Task '{title}' deleted"}
+        return f"Task '{title}' deleted successfully"
     except Exception as e:
         db.rollback()
-        return {"success": False, "error": str(e)}
+        return f"Error deleting task: {str(e)}"
 
 
+@tool
 def update_task(
-    db: Session,
-    task_id: str,
-    title: str = None,
-    status: str = None,
-    energy_cost: int = None,
-    priority: str = None,
-    deadline: str = None,
-    scheduled_date: str = None,
-    importance: bool = None,
-    is_urgent: bool = None
-) -> dict:
-    """Update an existing task."""
+    task_id: Annotated[str, "The task UUID"],
+    title: Annotated[Optional[str], "New title"] = None,
+    status: Annotated[Optional[str], "New status: todo, in_progress, done, backlog"] = None,
+    priority: Annotated[Optional[str], "New priority: High, Medium, Low"] = None,
+    importance: Annotated[Optional[bool], "Is important?"] = None,
+    is_urgent: Annotated[Optional[bool], "Is urgent?"] = None
+) -> str:
+    """Update an existing task's properties."""
+    import models
+    
+    db = get_db()
     try:
         task = db.query(models.Task).filter(models.Task.id == uuid_module.UUID(task_id)).first()
         if not task:
-            return {"success": False, "error": "Task not found"}
+            return "Task not found"
         
         if title: task.title = title
         if status and status in ["todo", "in_progress", "done", "backlog"]: task.status = status
-        if energy_cost: task.energy_cost = min(max(energy_cost, 1), 10)
         if priority and priority in ["High", "Medium", "Low"]: task.priority = priority
-        if deadline: task.deadline = datetime.fromisoformat(deadline)
-        if scheduled_date: task.scheduled_date = datetime.fromisoformat(scheduled_date)
         if importance is not None: task.importance = importance
         if is_urgent is not None: task.is_urgent = is_urgent
         
         db.commit()
-        return {"success": True, "message": f"Task '{task.title}' updated"}
+        return f"Task '{task.title}' updated successfully"
     except Exception as e:
         db.rollback()
-        return {"success": False, "error": str(e)}
+        return f"Error updating task: {str(e)}"
 
 
+@tool
 def get_tasks(
-    db: Session,
-    status: str = None,
-    priority: str = None,
-    today_only: bool = False,
-    limit: int = 10
-) -> dict:
-    """Get tasks with optional filtering."""
+    status: Annotated[Optional[str], "Filter by status: todo, in_progress, done, backlog"] = None,
+    priority: Annotated[Optional[str], "Filter by priority: High, Medium, Low"] = None,
+    today_only: Annotated[bool, "Only show today's scheduled tasks"] = False,
+    limit: Annotated[int, "Max number of results"] = 10
+) -> str:
+    """Get tasks with optional filters."""
+    import models
+    
+    db = get_db()
     try:
         query = db.query(models.Task)
         
@@ -149,290 +143,139 @@ def get_tasks(
         
         tasks = query.order_by(models.Task.created_at.desc()).limit(limit).all()
         
-        return {
-            "success": True,
-            "count": len(tasks),
-            "tasks": [
-                {
-                    "id": str(t.id),
-                    "title": t.title,
-                    "status": t.status,
-                    "priority": t.priority,
-                    "energy_cost": t.energy_cost,
-                    "deadline": t.deadline.isoformat() if t.deadline else None,
-                    "scheduled_date": t.scheduled_date.isoformat() if t.scheduled_date else None,
-                    "importance": t.importance,
-                    "is_urgent": t.is_urgent
-                }
-                for t in tasks
-            ]
-        }
+        if not tasks:
+            return "No tasks found matching the criteria."
+        
+        result = []
+        for t in tasks:
+            result.append(f"- {t.title} [{t.status}] (Priority: {t.priority}, Energy: {t.energy_cost})")
+        
+        return f"Found {len(tasks)} tasks:\n" + "\n".join(result)
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        return f"Error fetching tasks: {str(e)}"
 
 
-def get_documents(db: Session, limit: int = 10) -> dict:
-    """Get all documents from the Brain."""
+@tool
+def get_documents(limit: Annotated[int, "Max number of documents"] = 10) -> str:
+    """Get list of documents from the Brain."""
+    import models
+    
+    db = get_db()
     try:
         docs = db.query(models.Document).order_by(models.Document.last_edited.desc()).limit(limit).all()
         
-        return {
-            "success": True,
-            "count": len(docs),
-            "documents": [
-                {
-                    "id": str(d.id),
-                    "title": d.title,
-                    "created_at": d.created_at.isoformat() if d.created_at else None,
-                    "last_edited": d.last_edited.isoformat() if d.last_edited else None,
-                    "content_preview": str(d.content)[:200] if d.content else "Empty"
-                }
-                for d in docs
-            ]
-        }
+        if not docs:
+            return "No documents found in the Brain."
+        
+        result = []
+        for d in docs:
+            preview = str(d.content)[:50] + "..." if d.content else "Empty"
+            result.append(f"- {d.title} (ID: {d.id}): {preview}")
+        
+        return f"Found {len(docs)} documents:\n" + "\n".join(result)
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        return f"Error fetching documents: {str(e)}"
 
 
-def get_document_content(db: Session, doc_id: str) -> dict:
-    """Get full content of a specific document."""
+@tool
+def get_document_content(doc_id: Annotated[str, "The document UUID"]) -> str:
+    """Get the full content of a specific document."""
+    import models
+    
+    db = get_db()
     try:
         doc = db.query(models.Document).filter(models.Document.id == uuid_module.UUID(doc_id)).first()
         if not doc:
-            return {"success": False, "error": "Document not found"}
+            return "Document not found"
         
-        return {
-            "success": True,
-            "document": {
-                "id": str(doc.id),
-                "title": doc.title,
-                "content": doc.content,
-                "created_at": doc.created_at.isoformat() if doc.created_at else None,
-                "last_edited": doc.last_edited.isoformat() if doc.last_edited else None
-            }
-        }
+        return f"**{doc.title}**\n\n{doc.content or 'No content'}"
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        return f"Error fetching document: {str(e)}"
 
 
-def create_linked_task(
-    db: Session,
-    title: str,
-    description: str = None,
-    source_doc_id: str = None
-) -> dict:
-    """Create a linked task from document context."""
-    try:
-        linked = models.LinkedTask(
-            title=title,
-            description=description,
-            source_type="document",
-            source_doc_id=uuid_module.UUID(source_doc_id) if source_doc_id else None,
-            status="pending"
-        )
-        db.add(linked)
-        db.commit()
-        db.refresh(linked)
-        
-        return {
-            "success": True,
-            "message": f"Linked task '{title}' created",
-            "linked_task_id": str(linked.id)
-        }
-    except Exception as e:
-        db.rollback()
-        return {"success": False, "error": str(e)}
-
-
-def get_energy_status(db: Session) -> dict:
-    """Get today's energy status."""
+@tool
+def get_energy_status() -> str:
+    """Get today's energy capacity and usage."""
+    import models
+    from main import DEFAULT_USER_ID
+    
+    db = get_db()
     try:
         today = date.today()
         log = db.query(models.EnergyLog).filter(models.EnergyLog.date == today).first()
         
         if not log:
-            # Create today's log
-            log = models.EnergyLog(date=today, capacity=30, used=0)
-            db.add(log)
-            db.commit()
-            db.refresh(log)
+            return f"Energy Status for {today}: 0/30 used (30 remaining)"
         
-        return {
-            "success": True,
-            "date": str(today),
-            "capacity": log.capacity,
-            "used": log.used,
-            "remaining": log.capacity - log.used
-        }
+        remaining = log.total_capacity - log.used_capacity
+        return f"Energy Status for {today}: {log.used_capacity}/{log.total_capacity} used ({remaining} remaining)"
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        return f"Error fetching energy status: {str(e)}"
 
 
-def get_task_lists(db: Session) -> dict:
-    """Get all task lists."""
+@tool
+def get_task_lists() -> str:
+    """Get all available task lists."""
+    import models
+    
+    db = get_db()
     try:
         lists = db.query(models.TaskList).all()
-        return {
-            "success": True,
-            "lists": [
-                {"id": str(l.id), "name": l.name, "color": l.color}
-                for l in lists
-            ]
-        }
+        
+        if not lists:
+            return "No task lists found."
+        
+        result = []
+        for l in lists:
+            result.append(f"- {l.name} (ID: {l.id}, Color: {l.color})")
+        
+        return f"Found {len(lists)} task lists:\n" + "\n".join(result)
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        return f"Error fetching task lists: {str(e)}"
 
 
-# Tool definitions for LLM function calling
-TOOL_DEFINITIONS = [
-    {
-        "type": "function",
-        "function": {
-            "name": "create_task",
-            "description": "Create a new task with title, energy cost, priority, deadline, etc.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "title": {"type": "string", "description": "Task title"},
-                    "energy_cost": {"type": "integer", "description": "Energy cost 1-10, default 5"},
-                    "priority": {"type": "string", "enum": ["High", "Medium", "Low"], "description": "Priority level"},
-                    "context": {"type": "string", "description": "Additional notes"},
-                    "deadline": {"type": "string", "description": "Deadline in ISO format (YYYY-MM-DDTHH:MM:SS)"},
-                    "scheduled_date": {"type": "string", "description": "Scheduled date in ISO format"},
-                    "importance": {"type": "boolean", "description": "Is this important?"},
-                    "is_urgent": {"type": "boolean", "description": "Is this urgent?"}
-                },
-                "required": ["title"]
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "delete_task",
-            "description": "Delete a task by its ID",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "task_id": {"type": "string", "description": "The task UUID to delete"}
-                },
-                "required": ["task_id"]
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "update_task",
-            "description": "Update an existing task's properties",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "task_id": {"type": "string", "description": "The task UUID"},
-                    "title": {"type": "string"},
-                    "status": {"type": "string", "enum": ["todo", "in_progress", "done", "backlog"]},
-                    "priority": {"type": "string", "enum": ["High", "Medium", "Low"]},
-                    "deadline": {"type": "string"},
-                    "importance": {"type": "boolean"},
-                    "is_urgent": {"type": "boolean"}
-                },
-                "required": ["task_id"]
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_tasks",
-            "description": "Get tasks with optional filters",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "status": {"type": "string", "enum": ["todo", "in_progress", "done", "backlog"]},
-                    "priority": {"type": "string", "enum": ["High", "Medium", "Low"]},
-                    "today_only": {"type": "boolean", "description": "Only show today's scheduled tasks"},
-                    "limit": {"type": "integer", "description": "Max number of results"}
-                }
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_documents",
-            "description": "Get list of documents from the Brain",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "limit": {"type": "integer", "description": "Max number of documents"}
-                }
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_document_content",
-            "description": "Get the full content of a specific document",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "doc_id": {"type": "string", "description": "The document UUID"}
-                },
-                "required": ["doc_id"]
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "create_linked_task",
-            "description": "Create a linked task from document context",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "title": {"type": "string", "description": "Task title"},
-                    "description": {"type": "string", "description": "Task description"},
-                    "source_doc_id": {"type": "string", "description": "Source document UUID"}
-                },
-                "required": ["title"]
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_energy_status",
-            "description": "Get today's energy capacity and usage",
-            "parameters": {"type": "object", "properties": {}}
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_task_lists",
-            "description": "Get all available task lists",
-            "parameters": {"type": "object", "properties": {}}
-        }
-    }
-]
-
-
-def execute_tool(db: Session, tool_name: str, arguments: dict) -> dict:
-    """Execute a tool by name with given arguments."""
-    tool_map = {
-        "create_task": lambda: create_task(db, **arguments),
-        "delete_task": lambda: delete_task(db, **arguments),
-        "update_task": lambda: update_task(db, **arguments),
-        "get_tasks": lambda: get_tasks(db, **arguments),
-        "get_documents": lambda: get_documents(db, **arguments),
-        "get_document_content": lambda: get_document_content(db, **arguments),
-        "create_linked_task": lambda: create_linked_task(db, **arguments),
-        "get_energy_status": lambda: get_energy_status(db),
-        "get_task_lists": lambda: get_task_lists(db)
-    }
+@tool
+def add_calendar_event(
+    description: Annotated[str, "Event description"],
+    event_date: Annotated[str, "Date in YYYY-MM-DD format"],
+    event_time: Annotated[str, "Time in HH:MM format"]
+) -> str:
+    """Add a calendar event/task with specific date and time."""
+    import models
+    from main import DEFAULT_USER_ID
     
-    if tool_name in tool_map:
-        return tool_map[tool_name]()
-    else:
-        return {"success": False, "error": f"Unknown tool: {tool_name}"}
+    db = get_db()
+    try:
+        scheduled_dt = datetime.strptime(f"{event_date} {event_time}", "%Y-%m-%d %H:%M")
+        
+        new_task = models.Task(
+            title=description,
+            energy_cost=3,
+            priority="Medium",
+            scheduled_date=scheduled_dt.date(),
+            started_at=scheduled_dt,
+            status="todo",
+            user_id=DEFAULT_USER_ID
+        )
+        db.add(new_task)
+        db.commit()
+        db.refresh(new_task)
+        
+        return f"Calendar event '{description}' added for {event_date} at {event_time}"
+    except Exception as e:
+        db.rollback()
+        return f"Error adding calendar event: {str(e)}"
+
+
+# List of all tools for the agent
+ALL_TOOLS = [
+    create_task,
+    delete_task,
+    update_task,
+    get_tasks,
+    get_documents,
+    get_document_content,
+    get_energy_status,
+    get_task_lists,
+    add_calendar_event
+]

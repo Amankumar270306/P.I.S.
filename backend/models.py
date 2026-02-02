@@ -67,10 +67,13 @@ class Task(Base):
 class EnergyLog(Base):
     __tablename__ = "energy_logs"
     
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     date = Column(Date, default=datetime.utcnow)
-    capacity = Column(Integer, default=30)
-    used = Column(Integer, default=0)
+    total_capacity = Column(Integer, default=30)
+    used_capacity = Column(Integer, default=0)
+    mood_score = Column(Integer, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 
 class Document(Base):

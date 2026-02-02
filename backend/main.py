@@ -119,7 +119,7 @@ def update_user(user_id: uuid_module.UUID, user_update: schemas.UserUpdate, db: 
     return user
 
 # Default user ID for backwards compatibility
-DEFAULT_USER_ID = uuid_module.UUID("5a739fce-9d21-4be2-970a-4b3aa52133a8")
+DEFAULT_USER_ID = uuid_module.UUID("2fa88733-6630-4ec9-acff-c4bf7867a88d")
 
 # --- Task List Endpoints ---
 
@@ -167,13 +167,13 @@ def create_task(task: schemas.TaskCreate, db: Session = Depends(get_db)):
     ).first()
     
     if not energy_log:
-        energy_log = models.EnergyLog(date=today, capacity=30, used=0)
+        energy_log = models.EnergyLog(date=today, user_id=DEFAULT_USER_ID, total_capacity=30, used_capacity=0)
         db.add(energy_log)
         db.commit()
         db.refresh(energy_log)
     
     # Check if adding this task would exceed daily limit
-    remaining = energy_log.capacity - energy_log.used
+    remaining = energy_log.total_capacity - energy_log.used_capacity
     if task.energy_cost > remaining:
         raise HTTPException(
             status_code=400, 
@@ -188,7 +188,7 @@ def create_task(task: schemas.TaskCreate, db: Session = Depends(get_db)):
     db.add(db_task)
     
     # Update energy used
-    energy_log.used += task.energy_cost
+    energy_log.used_capacity += task.energy_cost
     db.add(energy_log)
     
     db.commit()
@@ -260,16 +260,16 @@ def get_today_energy(db: Session = Depends(get_db)):
     ).first()
     
     if not energy_log:
-        energy_log = models.EnergyLog(date=today, capacity=30, used=0)
+        energy_log = models.EnergyLog(date=today, user_id=DEFAULT_USER_ID, total_capacity=30, used_capacity=0)
         db.add(energy_log)
         db.commit()
         db.refresh(energy_log)
     
     return {
         "date": str(today),
-        "capacity": energy_log.capacity,
-        "used": energy_log.used,
-        "remaining": energy_log.capacity - energy_log.used
+        "capacity": energy_log.total_capacity,
+        "used": energy_log.used_capacity,
+        "remaining": energy_log.total_capacity - energy_log.used_capacity
     }
 
 @app.post("/energy/reset", summary="Reset today's energy")
@@ -284,7 +284,7 @@ def reset_today_energy(db: Session = Depends(get_db)):
     ).first()
     
     if energy_log:
-        energy_log.used = 0
+        energy_log.used_capacity = 0
         db.commit()
         db.refresh(energy_log)
     
@@ -324,6 +324,7 @@ def read_documents(db: Session = Depends(get_db)):
 @app.post("/documents/", response_model=schemas.Document, summary="Create a new document")
 def create_document(doc: schemas.DocumentCreate, db: Session = Depends(get_db)):
     db_doc = models.Document(**doc.model_dump())
+    db_doc.user_id = DEFAULT_USER_ID
     db.add(db_doc)
     db.commit()
     db.refresh(db_doc)

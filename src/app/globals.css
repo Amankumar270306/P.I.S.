@@ -20,22 +20,34 @@ body {
 }
 
 /* Ensure text visibility across components */
-h1, h2, h3, h4, h5, h6 {
-  color: #1e293b; /* slate-800 */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: #1e293b;
+  /* slate-800 */
 }
 
-p, span, label {
+p,
+span,
+label {
   color: inherit;
 }
 
 /* Fix input visibility */
-input, textarea, select {
+input,
+textarea,
+select {
   color: #1e293b !important;
   background-color: #fff !important;
 }
 
-input::placeholder, textarea::placeholder {
-  color: #94a3b8 !important; /* slate-400 */
+input::placeholder,
+textarea::placeholder {
+  color: #94a3b8 !important;
+  /* slate-400 */
 }
 
 /* Fix card text visibility */
@@ -60,7 +72,10 @@ input::placeholder, textarea::placeholder {
 }
 
 /* Ensure white text on dark backgrounds */
-.bg-indigo-600, .bg-indigo-500, .bg-purple-600, .bg-purple-500 {
+.bg-indigo-600,
+.bg-indigo-500,
+.bg-purple-600,
+.bg-purple-500 {
   color: #fff;
 }
 
@@ -70,10 +85,60 @@ input::placeholder, textarea::placeholder {
 }
 
 /* Fix sidebar text */
-aside span, aside p, aside a {
+aside span,
+aside p,
+aside a {
   color: #334155;
 }
 
-aside .text-white, aside .text-slate-100 {
+aside .text-white,
+aside .text-slate-100 {
   color: #fff !important;
+}
+
+/* React Resizable Panels */
+[data-group] {
+  display: flex;
+  width: 100%;
+  height: 100%;
+}
+
+[data-group][data-orientation="horizontal"] {
+  flex-direction: row;
+}
+
+[data-group][data-orientation="vertical"] {
+  flex-direction: column;
+}
+
+[data-panel] {
+  overflow: hidden;
+}
+
+[data-separator] {
+  flex-shrink: 0;
+  flex-grow: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #e2e8f0;
+  transition: background-color 0.15s ease;
+}
+
+[data-separator]:hover {
+  background-color: #c7d2fe;
+}
+
+[data-separator]:active {
+  background-color: #a5b4fc;
+}
+
+[data-separator][data-orientation="horizontal"] {
+  cursor: col-resize;
+  width: 8px;
+}
+
+[data-separator][data-orientation="vertical"] {
+  cursor: row-resize;
+  height: 8px;
 }

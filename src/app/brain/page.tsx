@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Editor } from "@/components/editor/Editor";
 import { LinkedTasks } from "@/components/editor/LinkedTasks";
-import { Plus, FileText, Trash2, Save, File } from "lucide-react";
+import { Plus, FileText, Trash2, File, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getDocuments, createDocument, updateDocument, deleteDocument, Document } from "@/lib/api";
 
@@ -13,10 +13,65 @@ export default function DocsPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
 
+    // Panel widths (in pixels)
+    const [leftWidth, setLeftWidth] = useState(256);
+    const [rightWidth, setRightWidth] = useState(320);
+
+    // Refs for resize dragging
+    const containerRef = useRef<HTMLDivElement>(null);
+    const isResizingLeft = useRef(false);
+    const isResizingRight = useRef(false);
+
     // Initial Fetch
     useEffect(() => {
         loadDocuments();
     }, []);
+
+    // Mouse event handlers for resizing
+    useEffect(() => {
+        const handleMouseMove = (e: MouseEvent) => {
+            if (!containerRef.current) return;
+
+            const containerRect = containerRef.current.getBoundingClientRect();
+
+            if (isResizingLeft.current) {
+                const newWidth = e.clientX - containerRect.left;
+                setLeftWidth(Math.max(180, Math.min(400, newWidth)));
+            }
+
+            if (isResizingRight.current) {
+                const newWidth = containerRect.right - e.clientX;
+                setRightWidth(Math.max(200, Math.min(450, newWidth)));
+            }
+        };
+
+        const handleMouseUp = () => {
+            isResizingLeft.current = false;
+            isResizingRight.current = false;
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+        };
+
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+
+        return () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, []);
+
+    const startResizeLeft = () => {
+        isResizingLeft.current = true;
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+    };
+
+    const startResizeRight = () => {
+        isResizingRight.current = true;
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+    };
 
     const loadDocuments = async () => {
         setIsLoading(true);
@@ -62,9 +117,12 @@ export default function DocsPage() {
     const selectedDoc = documents.find(d => d.id === selectedDocId);
 
     return (
-        <div className="flex h-screen overflow-hidden bg-slate-50">
+        <div ref={containerRef} className="flex h-screen overflow-hidden bg-slate-50">
             {/* Sidebar / Stack of Docs */}
-            <div className="w-64 bg-white border-r border-slate-200 flex flex-col shrink-0">
+            <div
+                className="bg-white border-r border-slate-200 flex flex-col shrink-0"
+                style={{ width: leftWidth }}
+            >
                 <div className="p-4 border-b border-slate-100 flex items-center justify-between">
                     <h2 className="font-bold text-slate-800 flex items-center gap-2">
                         <FileText className="size-5 text-indigo-600" />
@@ -117,11 +175,19 @@ export default function DocsPage() {
                 </div>
             </div>
 
+            {/* Left Resize Handle */}
+            <div
+                className="w-2 bg-slate-200 hover:bg-indigo-400 cursor-col-resize flex items-center justify-center shrink-0 transition-colors group"
+                onMouseDown={startResizeLeft}
+            >
+                <GripVertical className="size-4 text-slate-400 group-hover:text-white" />
+            </div>
+
             {/* Main Editing Area */}
             <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0">
                 {selectedDoc ? (
-                    <div className="flex-1 overflow-y-auto bg-white flex">
-                        <div className="flex-1 max-w-4xl mx-auto px-8 py-12">
+                    <div className="flex-1 overflow-y-auto bg-white">
+                        <div className="max-w-4xl mx-auto px-8 py-12">
                             {/* Header */}
                             <div className="flex items-center justify-between mb-8 group">
                                 <input
@@ -151,9 +217,6 @@ export default function DocsPage() {
                                 />
                             </div>
                         </div>
-
-                        {/* Linked Tasks Sidebar */}
-                        <LinkedTasks sourceType="document" sourceId={selectedDoc.id.toString()} />
                     </div>
                 ) : (
                     <div className="flex-1 flex items-center justify-center text-slate-400 bg-slate-50/50">
@@ -164,6 +227,24 @@ export default function DocsPage() {
                     </div>
                 )}
             </div>
+
+            {/* Right Resize Handle */}
+            <div
+                className="w-2 bg-slate-200 hover:bg-indigo-400 cursor-col-resize flex items-center justify-center shrink-0 transition-colors group"
+                onMouseDown={startResizeRight}
+            >
+                <GripVertical className="size-4 text-slate-400 group-hover:text-white" />
+            </div>
+
+            {/* Linked Tasks Sidebar */}
+            {selectedDoc && (
+                <div
+                    className="bg-white border-l border-slate-200 shrink-0 overflow-hidden"
+                    style={{ width: rightWidth }}
+                >
+                    <LinkedTasks sourceType="document" sourceId={selectedDoc.id.toString()} />
+                </div>
+            )}
         </div>
     );
 }

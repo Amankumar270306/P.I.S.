@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Command, FileText, Settings, Calendar, User, PanelLeftClose, PanelLeftOpen, ListTodo, LogOut, Network, MessageSquare } from 'lucide-react';
+import { Command, FileText, Settings, Calendar, User, PanelLeftClose, PanelLeftOpen, ListTodo, LogOut, Network, MessageSquare, Bot } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DailyReviewModal } from './review/DailyReviewModal';
 import { useAuth } from '@/lib/auth-context';
@@ -11,10 +11,10 @@ import { useAuth } from '@/lib/auth-context';
 const navItems = [
     { name: 'Command Center', href: '/', icon: Command },
     { name: 'Tasks', href: '/tasks', icon: ListTodo },
-    { name: 'Chat', href: '/chat', icon: MessageSquare },
     { name: 'Project Map', href: '/map', icon: Network },
     { name: 'Calendar', href: '/calendar', icon: Calendar },
-    { name: 'Brain', href: '/brain', icon: FileText },
+    { name: 'Documents', href: '/brain', icon: FileText },
+    { name: 'AI Chat', href: '/chat', icon: Bot },
     { name: 'Settings', href: '/settings', icon: Settings },
 ];
 
