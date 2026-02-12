@@ -1,14 +1,14 @@
 """
 Intent Router for Multi-Model LangGraph System.
-Uses phi3:mini for fast intent classification.
+Uses OpenRouter API for fast intent classification.
 """
 
 import os
 import json
 from typing import Optional
-from langchain_ollama import ChatOllama
-from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
+
+from agent.openrouter import chat_completion
 
 
 class RouterOutput(BaseModel):
@@ -69,49 +69,29 @@ User: "Hello"
 Respond with ONLY the JSON object, no other text."""
 
 
-def create_router_llm():
-    """Create the phi3:mini router LLM."""
-    base_url = os.getenv("AI_MODEL_URL", "http://localhost:11434")
-    
-    # Clean URL for langchain-ollama (needs just http://host:port)
-    if "/v1" in base_url:
-        base_url = base_url.split("/v1")[0]
-    if base_url.endswith("/"):
-        base_url = base_url[:-1]
-    
-    # Debug log
-    print(f"[Router] Using Ollama at: {base_url}")
-    
-    return ChatOllama(
-        model="phi3:mini",
-        base_url=base_url,
-        temperature=0.1,  # Low temperature for deterministic routing
-        format="json"
-    )
-
-
 def route_intent(user_message: str) -> RouterOutput:
     """
-    Route user intent using phi3:mini.
+    Route user intent using OpenRouter API.
     Returns structured RouterOutput.
     """
     print(f"[Router] Classifying: '{user_message}'")
-    
-    llm = create_router_llm()
-    
+
     messages = [
-        SystemMessage(content=ROUTER_SYSTEM_PROMPT),
-        HumanMessage(content=user_message)
+        {"role": "system", "content": ROUTER_SYSTEM_PROMPT},
+        {"role": "user", "content": user_message},
     ]
-    
+
     try:
-        response = llm.invoke(messages)
-        content = response.content.strip()
+        content = chat_completion(
+            messages=messages,
+            temperature=0.1,
+            max_tokens=256,
+        )
+        content = content.strip()
         print(f"[Router] Raw response: {content[:200]}")
-        
-        # Parse JSON
+
         data = json.loads(content)
-        
+
         result = RouterOutput(
             intent=data.get("intent", "smalltalk"),
             confidence=data.get("confidence", 0.5),
@@ -119,29 +99,72 @@ def route_intent(user_message: str) -> RouterOutput:
             title=data.get("title"),
             doc_id=data.get("doc_id"),
             clarification_needed=data.get("clarification_needed", False),
-            clarification_question=data.get("clarification_question")
+            clarification_question=data.get("clarification_question"),
         )
         print(f"[Router] Classified as: {result.intent} (action={result.action}, title={result.title})")
         return result
-        
+
     except json.JSONDecodeError as e:
         print(f"[Router] JSON parse error: {e}")
-        # Fallback: try to extract intent from text
-        content_lower = response.content.lower() if response else ""
-        if "fast_task" in content_lower or "create" in content_lower or "add" in content_lower:
+        
+        # Try to extract JSON from within the response text
+        from agent.openrouter import _extract_json_from_text
+        extracted = _extract_json_from_text(content)
+        if extracted:
+            try:
+                data = json.loads(extracted)
+                result = RouterOutput(
+                    intent=data.get("intent", "smalltalk"),
+                    confidence=data.get("confidence", 0.6),
+                    action=data.get("action"),
+                    title=data.get("title"),
+                    doc_id=data.get("doc_id"),
+                    clarification_needed=data.get("clarification_needed", False),
+                    clarification_question=data.get("clarification_question"),
+                )
+                print(f"[Router] Extracted JSON → {result.intent} (action={result.action})")
+                return result
+            except (json.JSONDecodeError, Exception):
+                pass
+        
+        # Fallback: classify based on the USER'S message, NOT the AI response
+        user_lower = user_message.lower()
+        print(f"[Router] Falling back to keyword matching on: '{user_lower}'")
+        
+        # Energy patterns (check BEFORE list to avoid misroute)
+        if any(p in user_lower for p in ["energy", "capacity", "how much time", "remaining point",
+                "how tired", "bandwidth"]):
+            return RouterOutput(intent="fast_task", confidence=0.8, action="energy")
+        # List/query patterns
+        if any(p in user_lower for p in ["what task", "show task", "list task", "my task", 
+                "what do i have", "what's on", "how many task", "today", "pending",
+                "show me", "what are my"]):
+            return RouterOutput(intent="fast_task", confidence=0.7, action="list")
+        # Delete patterns
+        if any(p in user_lower for p in ["delete ", "remove ", "clear all", "delete_all"]):
+            if "all" in user_lower:
+                return RouterOutput(intent="fast_task", confidence=0.7, action="delete_all")
+            return RouterOutput(intent="fast_task", confidence=0.7, action="delete",
+                                title=user_lower.split("delete")[-1].split("remove")[-1].strip())
+        # Complete patterns  
+        if any(p in user_lower for p in ["complete ", "mark done", "finish ", "done "]):
+            return RouterOutput(intent="fast_task", confidence=0.7, action="complete")
+        # Create patterns (must be AFTER list/delete to avoid false positives)
+        if any(p in user_lower for p in ["add ", "create ", "new task", "schedule ", "assign "]):
             return RouterOutput(intent="fast_task", confidence=0.7, action="create")
-        elif "reasoning" in content_lower or "plan" in content_lower:
-            return RouterOutput(intent="reasoning", confidence=0.7)
-        elif "document" in content_lower:
+        # Document patterns
+        if any(p in user_lower for p in ["document", "summarize", "read ", "notes"]):
             return RouterOutput(intent="document", confidence=0.7)
-        else:
-            return RouterOutput(intent="smalltalk", confidence=0.5)
+        # Reasoning patterns
+        if any(p in user_lower for p in ["plan ", "prioritize", "break down", "analyze"]):
+            return RouterOutput(intent="reasoning", confidence=0.7)
+        
+        return RouterOutput(intent="smalltalk", confidence=0.5)
     except Exception as e:
         print(f"[Router] Error: {type(e).__name__}: {e}")
-        # Error fallback
         return RouterOutput(
             intent="smalltalk",
             confidence=0.3,
             clarification_needed=True,
-            clarification_question=f"I had trouble understanding. Could you rephrase?"
+            clarification_question="I had trouble understanding. Could you rephrase?",
         )

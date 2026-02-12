@@ -22,6 +22,7 @@ export interface TaskDTO {
     ended_at?: string;
     importance?: boolean;
     is_urgent?: boolean;
+    list_id?: string;
 }
 
 export interface TaskCreateDTO {
@@ -93,6 +94,22 @@ const api = axios.create({
     },
 });
 
+// Attach X-User-Id header from localStorage on every request
+api.interceptors.request.use((config) => {
+    if (typeof window !== 'undefined') {
+        const storedUser = localStorage.getItem('pis_user');
+        if (storedUser) {
+            try {
+                const user = JSON.parse(storedUser);
+                if (user?.id) {
+                    config.headers['X-User-Id'] = user.id;
+                }
+            } catch { }
+        }
+    }
+    return config;
+});
+
 // User API Functions
 export const registerUser = async (data: UserCreateDTO): Promise<UserProfile> => {
     const response = await api.post<UserProfile>('/auth/register', data);
@@ -132,6 +149,8 @@ const mapToDomain = (dto: TaskDTO): Task => ({
     endedAt: dto.ended_at,
     importance: dto.importance,
     isUrgent: dto.is_urgent,
+    listId: dto.list_id,
+    createdAt: dto.created_at,
 });
 
 const mapToDTO = (task: Partial<Task> & { title: string; energyCost: number; context: string; list_id?: string }): TaskCreateDTO => ({

@@ -14,4 +14,6 @@ export interface Task {
     endedAt?: string;
     importance?: boolean;
     isUrgent?: boolean;
+    listId?: string;
+    createdAt?: string;
 }

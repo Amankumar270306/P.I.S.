@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, Query
+from fastapi import FastAPI, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime, timedelta
@@ -28,10 +28,23 @@ app.add_middleware(
 from routers import direct_db
 app.include_router(direct_db.router)
 
-# --- CRUD Endpoints ---
-
 import uuid as uuid_module
 import hashlib
+
+# Middleware to set current_user_id from X-User-Id header
+@app.middleware("http")
+async def set_user_from_header(request: Request, call_next):
+    global current_user_id
+    user_id_header = request.headers.get("X-User-Id")
+    if user_id_header:
+        try:
+            current_user_id = uuid_module.UUID(user_id_header)
+        except ValueError:
+            pass
+    response = await call_next(request)
+    return response
+
+# --- CRUD Endpoints ---
 
 # Simple password hashing (in production use bcrypt)
 def hash_password(password: str) -> str:
@@ -119,21 +132,24 @@ def update_user(user_id: uuid_module.UUID, user_update: schemas.UserUpdate, db: 
     db.refresh(user)
     return user
 
-# Default user ID for backwards compatibility
-DEFAULT_USER_ID = uuid_module.UUID("2fa88733-6630-4ec9-acff-c4bf7867a88d")
+# Helper to get the active user ID
+def get_active_user_id() -> uuid_module.UUID:
+    if not current_user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated. Please login first.")
+    return current_user_id
 
 # --- Task List Endpoints ---
 
 @app.get("/lists/", response_model=List[schemas.TaskListResponse], summary="List all task lists")
 def read_lists(db: Session = Depends(get_db)):
     """Get all task lists for the current user."""
-    return db.query(models.TaskList).filter(models.TaskList.user_id == DEFAULT_USER_ID).all()
+    return db.query(models.TaskList).filter(models.TaskList.user_id == get_active_user_id()).all()
 
 @app.post("/lists/", response_model=schemas.TaskListResponse, summary="Create a new task list")
 def create_list(task_list: schemas.TaskListCreate, db: Session = Depends(get_db)):
     """Create a new task list."""
     db_list = models.TaskList(**task_list.model_dump())
-    db_list.user_id = DEFAULT_USER_ID
+    db_list.user_id = get_active_user_id()
     db.add(db_list)
     db.commit()
     db.refresh(db_list)
@@ -168,7 +184,7 @@ def create_task(task: schemas.TaskCreate, db: Session = Depends(get_db)):
     ).first()
     
     if not energy_log:
-        energy_log = models.EnergyLog(date=today, user_id=DEFAULT_USER_ID, total_capacity=90.0, used_capacity=0.0)
+        energy_log = models.EnergyLog(date=today, user_id=get_active_user_id(), total_capacity=90.0, used_capacity=0.0)
         db.add(energy_log)
         db.commit()
         db.refresh(energy_log)
@@ -184,7 +200,7 @@ def create_task(task: schemas.TaskCreate, db: Session = Depends(get_db)):
     # Create the task
     task_data = task.model_dump()
     db_task = models.Task(**task_data)
-    db_task.user_id = DEFAULT_USER_ID
+    db_task.user_id = get_active_user_id()
     
     db.add(db_task)
     
@@ -261,7 +277,7 @@ def get_today_energy(db: Session = Depends(get_db)):
     ).first()
     
     if not energy_log:
-        energy_log = models.EnergyLog(date=today, user_id=DEFAULT_USER_ID, total_capacity=90.0, used_capacity=0.0)
+        energy_log = models.EnergyLog(date=today, user_id=get_active_user_id(), total_capacity=90.0, used_capacity=0.0)
         db.add(energy_log)
         db.commit()
         db.refresh(energy_log)
@@ -326,7 +342,7 @@ def read_documents(db: Session = Depends(get_db)):
 @app.post("/documents/", response_model=schemas.Document, summary="Create a new document")
 def create_document(doc: schemas.DocumentCreate, db: Session = Depends(get_db)):
     db_doc = models.Document(**doc.model_dump())
-    db_doc.user_id = DEFAULT_USER_ID
+    db_doc.user_id = get_active_user_id()
     db.add(db_doc)
     db.commit()
     db.refresh(db_doc)

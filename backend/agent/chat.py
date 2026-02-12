@@ -137,10 +137,12 @@ def chat_with_agent(user_message: str, db: Session) -> str:
         
     except Exception as e:
         error_msg = str(e)
-        if "Connection refused" in error_msg or "refused" in error_msg.lower():
-            return "🔴 AI is offline. Please start Ollama with: `ollama serve`"
-        if "phi3" in error_msg.lower():
-            return "🔴 phi3:mini model not found. Run: `ollama pull phi3:mini`"
+        if "OPENROUTER_API_KEY" in error_msg:
+            return "🔴 OpenRouter API key not set. Add OPENROUTER_API_KEY to your .env file."
+        if "401" in error_msg or "unauthorized" in error_msg.lower():
+            return "🔴 Invalid OpenRouter API key. Please check your OPENROUTER_API_KEY."
+        if "Connection refused" in error_msg or "timeout" in error_msg.lower():
+            return "🔴 Could not reach OpenRouter API. Check your internet connection."
         return f"Error: {error_msg}"
 
 

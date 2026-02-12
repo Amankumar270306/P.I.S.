@@ -5,6 +5,7 @@ import { TaskBoard } from "@/components/tasks/TaskBoard";
 import { MatrixView } from "@/components/tasks/MatrixView";
 import { AddTaskDialog } from "@/components/tasks/AddTaskDialog";
 import { TaskListSelector } from "@/components/tasks/TaskListSelector";
+import { AllTasksTable } from "@/components/tasks/AllTasksTable";
 import { Plus, LayoutTemplate, LayoutGrid, ArrowLeft } from "lucide-react";
 import { Task } from "@/types/task";
 import { cn } from "@/lib/utils";
@@ -24,6 +25,12 @@ export default function TasksPage() {
     const { data: lists = [], isLoading: listsLoading } = useQuery({
         queryKey: ['taskLists'],
         queryFn: () => getTaskLists()
+    });
+
+    // Fetch ALL tasks (for the permanent table)
+    const { data: allTasks = [], isLoading: allTasksLoading } = useQuery({
+        queryKey: ['tasks', 'all'],
+        queryFn: () => getTasks()
     });
 
     // Fetch Tasks for selected list
@@ -53,7 +60,7 @@ export default function TasksPage() {
     const updateTaskMutation = useMutation({
         mutationFn: (variables: { id: string; updates: Partial<Task> }) => updateTask(variables.id, variables.updates),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['tasks', selectedList?.id] });
+            queryClient.invalidateQueries({ queryKey: ['tasks'] });
         }
     });
 
@@ -61,7 +68,7 @@ export default function TasksPage() {
     const createTaskMutation = useMutation({
         mutationFn: (newTask: any) => createTask({ ...newTask, list_id: selectedList?.id }),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['tasks', selectedList?.id] });
+            queryClient.invalidateQueries({ queryKey: ['tasks'] });
             setIsAddTaskOpen(false);
         }
     });
@@ -70,7 +77,7 @@ export default function TasksPage() {
     const deleteTaskMutation = useMutation({
         mutationFn: (taskId: string) => deleteTask(taskId),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['tasks', selectedList?.id] });
+            queryClient.invalidateQueries({ queryKey: ['tasks'] });
         }
     });
 
@@ -113,83 +120,107 @@ export default function TasksPage() {
     // Show list selector if no list is selected
     if (!selectedList) {
         return (
-            <TaskListSelector
-                lists={lists}
-                onSelectList={setSelectedList}
-                onCreateList={(name, color) => createListMutation.mutate({ name, color })}
-                onDeleteList={(id) => deleteListMutation.mutate(id)}
-                isLoading={listsLoading}
-            />
+            <div className="max-w-6xl mx-auto py-6 px-4 space-y-6">
+                {/* Permanent All Tasks Table */}
+                <AllTasksTable
+                    tasks={allTasks}
+                    lists={lists}
+                    onTaskUpdate={handleTaskUpdate}
+                    onTaskDelete={handleTaskDelete}
+                    isLoading={allTasksLoading}
+                />
+
+                {/* Task List Selector */}
+                <TaskListSelector
+                    lists={lists}
+                    onSelectList={setSelectedList}
+                    onCreateList={(name, color) => createListMutation.mutate({ name, color })}
+                    onDeleteList={(id) => deleteListMutation.mutate(id)}
+                    isLoading={listsLoading}
+                />
+            </div>
         );
     }
 
     // Show task board/matrix for selected list
     return (
-        <div className="max-w-6xl mx-auto py-6 px-4 h-[calc(100vh-2rem)] flex flex-col">
-            <header className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                    <button
-                        onClick={() => setSelectedList(null)}
-                        className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
-                    >
-                        <ArrowLeft className="size-5" />
-                    </button>
-                    <div>
-                        <h1 className="text-2xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
-                            <span
-                                className="w-3 h-3 rounded-full"
-                                style={{ backgroundColor: selectedList.color }}
-                            />
-                            {selectedList.name}
-                        </h1>
-                        <p className="text-slate-500 text-sm mt-1">Manage and track your tasks</p>
-                    </div>
-                </div>
-                <div className="flex items-center gap-3">
-                    {/* View Switcher */}
-                    <div className="flex p-1 bg-slate-100/80 rounded-lg border border-slate-200/60">
-                        <button
-                            onClick={() => setView('board')}
-                            className={cn(
-                                "p-1.5 rounded-md transition-all flex items-center gap-2 text-xs font-medium",
-                                view === 'board' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
-                            )}
-                        >
-                            <LayoutTemplate className="size-3.5" />
-                            Board
-                        </button>
-                        <button
-                            onClick={() => setView('matrix')}
-                            className={cn(
-                                "p-1.5 rounded-md transition-all flex items-center gap-2 text-xs font-medium",
-                                view === 'matrix' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
-                            )}
-                        >
-                            <LayoutGrid className="size-3.5" />
-                            Matrix
-                        </button>
-                    </div>
+        <div className="max-w-6xl mx-auto py-6 px-4 space-y-6">
+            {/* Permanent All Tasks Table */}
+            <AllTasksTable
+                tasks={allTasks}
+                lists={lists}
+                onTaskUpdate={handleTaskUpdate}
+                onTaskDelete={handleTaskDelete}
+                isLoading={allTasksLoading}
+            />
 
-                    <button
-                        onClick={() => setIsAddTaskOpen(true)}
-                        className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm shadow-indigo-200"
-                    >
-                        <Plus className="size-4" />
-                        <span>Add Task</span>
-                    </button>
-                </div>
-            </header>
-
-            <div className="flex-1 min-h-0 bg-white/50 rounded-xl border border-slate-200/60 shadow-sm overflow-hidden backdrop-blur-sm">
-                {tasksLoading ? (
-                    <div className="flex items-center justify-center h-full">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+            {/* Selected List Header + Board */}
+            <div className="flex flex-col" style={{ height: "calc(100vh - 500px)", minHeight: "400px" }}>
+                <header className="mb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => setSelectedList(null)}
+                            className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                        >
+                            <ArrowLeft className="size-5" />
+                        </button>
+                        <div>
+                            <h1 className="text-2xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
+                                <span
+                                    className="w-3 h-3 rounded-full"
+                                    style={{ backgroundColor: selectedList.color }}
+                                />
+                                {selectedList.name}
+                            </h1>
+                            <p className="text-slate-500 text-sm mt-1">Manage and track your tasks</p>
+                        </div>
                     </div>
-                ) : view === 'board' ? (
-                    <TaskBoard initialTasks={tasks} onTaskEdit={handleTaskUpdate} onTaskDelete={handleTaskDelete} />
-                ) : (
-                    <MatrixView tasks={tasks} onTaskUpdate={handleTaskUpdate} />
-                )}
+                    <div className="flex items-center gap-3">
+                        {/* View Switcher */}
+                        <div className="flex p-1 bg-slate-100/80 rounded-lg border border-slate-200/60">
+                            <button
+                                onClick={() => setView('board')}
+                                className={cn(
+                                    "p-1.5 rounded-md transition-all flex items-center gap-2 text-xs font-medium",
+                                    view === 'board' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
+                                )}
+                            >
+                                <LayoutTemplate className="size-3.5" />
+                                Board
+                            </button>
+                            <button
+                                onClick={() => setView('matrix')}
+                                className={cn(
+                                    "p-1.5 rounded-md transition-all flex items-center gap-2 text-xs font-medium",
+                                    view === 'matrix' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
+                                )}
+                            >
+                                <LayoutGrid className="size-3.5" />
+                                Matrix
+                            </button>
+                        </div>
+
+                        <button
+                            onClick={() => setIsAddTaskOpen(true)}
+                            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm shadow-indigo-200"
+                        >
+                            <Plus className="size-4" />
+                            <span>Add Task</span>
+                        </button>
+                    </div>
+                </header>
+
+                <div className="flex-1 min-h-0 bg-white/50 rounded-xl border border-slate-200/60 shadow-sm overflow-hidden backdrop-blur-sm">
+                    {tasksLoading ? (
+                        <div className="flex items-center justify-center h-full">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+                        </div>
+                    ) : view === 'board' ? (
+                        <TaskBoard initialTasks={tasks} onTaskEdit={handleTaskUpdate} onTaskDelete={handleTaskDelete} />
+                    ) : (
+                        <MatrixView tasks={tasks} onTaskUpdate={handleTaskUpdate} />
+                    )}
+                </div>
             </div>
 
             <AddTaskDialog

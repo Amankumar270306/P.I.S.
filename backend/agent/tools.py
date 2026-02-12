@@ -39,7 +39,7 @@ def create_task(
 ) -> str:
     """Create a new task with the given details."""
     import models
-    from main import DEFAULT_USER_ID
+    from main import get_active_user_id
     
     db = get_db()
     try:
@@ -56,7 +56,7 @@ def create_task(
             importance=importance,
             is_urgent=is_urgent,
             status="todo",
-            user_id=DEFAULT_USER_ID
+            user_id=get_active_user_id()
         )
         db.add(new_task)
         db.commit()
@@ -197,7 +197,7 @@ def get_document_content(doc_id: Annotated[str, "The document UUID"]) -> str:
 def get_energy_status() -> str:
     """Get today's energy capacity and usage."""
     import models
-    from main import DEFAULT_USER_ID
+    from main import get_active_user_id
     
     db = get_db()
     try:
@@ -242,7 +242,7 @@ def add_calendar_event(
 ) -> str:
     """Add a calendar event/task with specific date and time."""
     import models
-    from main import DEFAULT_USER_ID
+    from main import get_active_user_id
     
     db = get_db()
     try:
@@ -255,7 +255,7 @@ def add_calendar_event(
             scheduled_date=scheduled_dt.date(),
             started_at=scheduled_dt,
             status="todo",
-            user_id=DEFAULT_USER_ID
+            user_id=get_active_user_id()
         )
         db.add(new_task)
         db.commit()
