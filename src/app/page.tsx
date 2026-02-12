@@ -5,13 +5,16 @@ import { EnergyMeter } from "@/components/dashboard/EnergyMeter";
 import { ProductivityHeatmap } from "@/components/dashboard/ProductivityHeatmap";
 import { ConsistencyGraph } from "@/components/dashboard/ConsistencyGraph";
 import { useFocus } from "@/context/FocusContext";
+import { useAuth } from "@/lib/auth-context";
 import { useState, useEffect } from "react";
 import { createTask, getTasks, getTodayEnergy, EnergyStatus } from "@/lib/api";
 import { Task } from "@/types/task";
 import { Circle, CheckCircle2, Clock, CalendarOff, Play, ArrowRight } from "lucide-react";
+import { isSameDay, parseISO } from "date-fns";
 
 export default function Home() {
   const { startSession } = useFocus();
+  const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [energy, setEnergy] = useState<EnergyStatus>({ date: '', capacity: 90, used: 0, remaining: 90 });
 
@@ -36,6 +39,34 @@ export default function Home() {
     fetchTasks();
     fetchEnergy();
   }, []);
+
+  // Compute Daily Energy Stats
+  const today = new Date();
+  const dailyStats = tasks.reduce((acc, task) => {
+    // Determine if task is relevant for "Today"
+    const deadline = task.deadline ? parseISO(task.deadline) : null;
+    const started = task.startedAt ? parseISO(task.startedAt) : null;
+    const ended = task.endedAt ? parseISO(task.endedAt) : null;
+
+    const isDeadlineToday = deadline && isSameDay(deadline, today);
+    const isStartedToday = started && isSameDay(started, today);
+    const isEndedToday = ended && isSameDay(ended, today);
+
+    let isRelevant = false;
+    if (task.status === 'done') {
+      isRelevant = !!isEndedToday;
+    } else {
+      isRelevant = !!(isDeadlineToday || isStartedToday || task.status === 'in_progress');
+    }
+
+    if (isRelevant) {
+      acc.planned += task.energyCost;
+      if (task.status === 'done') {
+        acc.completed += task.energyCost;
+      }
+    }
+    return acc;
+  }, { planned: 0, completed: 0 });
 
   // Filter: tasks due today with no start time (not on calendar)
   const todayStr = new Date().toISOString().split('T')[0];
@@ -70,7 +101,7 @@ export default function Home() {
       <header className="flex flex-col md:flex-row md:items-center justify-between pb-4 border-b border-slate-200/60 gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Command Center</h1>
-          <p className="text-slate-500 text-sm">Welcome back, User.</p>
+          <p className="text-slate-500 text-sm">Welcome back, {user?.firstName || "User"}.</p>
         </div>
         <button
           onClick={() => startSession("Focus Session")}
@@ -83,7 +114,7 @@ export default function Home() {
       {/* Stats Row: Energy Bar | Current Tasks | Productivity Pulse */}
       <section className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="md:col-span-1">
-          <EnergyMeter currentEnergy={energy.used} maxEnergy={energy.capacity} />
+          <EnergyMeter plannedEnergy={dailyStats.planned} completedEnergy={dailyStats.completed} maxEnergy={energy.capacity} />
         </div>
         <div className="md:col-span-1">
           <div className="bg-white p-4 rounded-xl border border-slate-200/60 shadow-sm h-full flex flex-col">

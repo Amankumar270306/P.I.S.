@@ -6,7 +6,8 @@ import { loginUser, registerUser, UserLoginDTO, UserCreateDTO, UserProfile } fro
 interface User {
     id: string;
     email: string;
-    name?: string;
+    firstName?: string;
+    lastName?: string;
     phone?: string;
     age?: number;
     profession?: string;
@@ -16,7 +17,7 @@ interface AuthContextType {
     user: User | null;
     isLoading: boolean;
     login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-    register: (email: string, password: string, name: string) => Promise<{ success: boolean; error?: string }>;
+    register: (email: string, password: string, firstName: string, lastName: string) => Promise<{ success: boolean; error?: string }>;
     logout: () => void;
     setUser: (user: User | null) => void;
 }
@@ -54,7 +55,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const newUser: User = {
                 id: response.user.id,
                 email: response.user.email,
-                name: response.user.username,
+                firstName: response.user.first_name,
+                lastName: response.user.last_name,
                 phone: response.user.phone,
                 age: response.user.age,
                 profession: response.user.profession
@@ -70,11 +72,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     };
 
-    const register = async (email: string, password: string, name: string): Promise<{ success: boolean; error?: string }> => {
+    const register = async (email: string, password: string, firstName: string, lastName: string): Promise<{ success: boolean; error?: string }> => {
         setIsLoading(true);
         try {
             const response = await registerUser({
-                username: name,
+                first_name: firstName,
+                last_name: lastName,
                 email,
                 password
             });
@@ -82,7 +85,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const newUser: User = {
                 id: response.id,
                 email: response.email,
-                name: response.username,
+                firstName: response.first_name,
+                lastName: response.last_name,
                 phone: response.phone,
                 age: response.age,
                 profession: response.profession

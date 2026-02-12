@@ -47,7 +47,8 @@ export interface SystemState {
 // User Types
 export interface UserProfile {
     id: string;
-    username: string;
+    first_name: string;
+    last_name: string;
     email: string;
     phone?: string;
     age?: number;
@@ -57,7 +58,8 @@ export interface UserProfile {
 }
 
 export interface UserCreateDTO {
-    username: string;
+    first_name: string;
+    last_name: string;
     email: string;
     password: string;
     phone?: string;
@@ -66,7 +68,8 @@ export interface UserCreateDTO {
 }
 
 export interface UserUpdateDTO {
-    username?: string;
+    first_name?: string;
+    last_name?: string;
     phone?: string;
     age?: number;
     profession?: string;
@@ -259,7 +262,8 @@ export const chatAgent = async (message: string): Promise<{ response: string }> 
 
 export interface ChatUser {
     id: string;
-    username: string;
+    first_name: string;
+    last_name: string;
     avatar_url: string;
 }
 
@@ -282,8 +286,8 @@ export const getChatUsers = async (): Promise<ChatUser[]> => {
     return response.data;
 };
 
-export const createChatUser = async (username: string): Promise<ChatUser> => {
-    const response = await api.post('/chat/users', { username });
+export const createChatUser = async (firstName: string, lastName: string = ''): Promise<ChatUser> => {
+    const response = await api.post('/chat/users', { first_name: firstName, last_name: lastName });
     return response.data;
 };
 

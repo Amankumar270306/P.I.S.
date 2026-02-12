@@ -4,7 +4,8 @@ create extension if not exists "uuid-ossp";
 -- 1. USERS TABLE (Custom user profiles)
 create table public.users (
   id uuid primary key default uuid_generate_v4(),
-  username text not null,
+  first_name text not null,
+  last_name text not null default '',
   email text unique not null,
   phone text unique,
   password text not null,
@@ -128,7 +129,7 @@ create table public.energy_logs (
   id uuid primary key default uuid_generate_v4(),
   user_id uuid references public.users(id) not null,
   date date not null default CURRENT_DATE,
-  total_capacity integer default 30,
+  total_capacity integer default 90,
   used_capacity integer default 0,
   mood_score integer check (mood_score >= 1 and mood_score <= 5),
   created_at timestamptz default now(),

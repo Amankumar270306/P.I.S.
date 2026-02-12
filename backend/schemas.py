@@ -71,7 +71,8 @@ class SystemState(BaseModel):
 # --- User Profile Schemas ---
 
 class UserBase(BaseModel):
-    username: str = Field(..., description="User's display name")
+    first_name: str = Field(..., description="User's first name")
+    last_name: str = Field("", description="User's last name")
     email: str = Field(..., description="User's email address")
     phone: Optional[str] = Field(None, description="User's phone number")
     age: Optional[int] = Field(None, description="User's age")
@@ -81,7 +82,8 @@ class UserCreate(UserBase):
     password: str = Field(..., min_length=6, description="User's password")
 
 class UserUpdate(BaseModel):
-    username: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
     phone: Optional[str] = None
     age: Optional[int] = None
     profession: Optional[str] = None
@@ -178,7 +180,8 @@ class ChatResponse(BaseModel):
 # --- Team Chat Schemas ---
 
 class ChatUserBase(BaseModel):
-    username: str
+    first_name: str
+    last_name: str = ""
 
 class ChatUserCreate(ChatUserBase):
     pass

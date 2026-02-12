@@ -78,7 +78,7 @@ export function ProductivityHeatmap() {
             return {
                 date,
                 energySpent: logs.get(dateStr) || 0,
-                limit: 30 // Now 30 based on recent changes
+                limit: 90 // Updated to 90 points
             };
         });
 
@@ -112,10 +112,10 @@ export function ProductivityHeatmap() {
         if (energy === 0) return isDimmed ? "fill-slate-50" : "fill-slate-100";
 
         let baseColor = "fill-emerald-300";
-        if (energy > 20) baseColor = "fill-emerald-600";
-        if (energy > 30) baseColor = "fill-rose-500"; // Updated thresholds for limit 30
+        if (energy > 30) baseColor = "fill-emerald-600";
+        if (energy > 60) baseColor = "fill-rose-500";
 
-        return isDimmed ? "fill-slate-200" : baseColor; // Placeholder for dimmed color logic, effectively graying out
+        return isDimmed ? "fill-slate-200" : baseColor;
     };
 
     // Better color logic for dimmed state using opacity or specific colors
@@ -124,8 +124,8 @@ export function ProductivityHeatmap() {
 
         let colorClass = "bg-slate-100";
         if (energy > 0) colorClass = "bg-emerald-300";
-        if (energy > 15) colorClass = "bg-emerald-500";
-        if (energy > 25) colorClass = "bg-rose-500";
+        if (energy > 30) colorClass = "bg-emerald-500";
+        if (energy > 60) colorClass = "bg-rose-500";
 
         if (energy === 0) colorClass = "bg-slate-100";
 

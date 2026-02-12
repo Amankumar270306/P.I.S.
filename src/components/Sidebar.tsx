@@ -110,8 +110,8 @@ export function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
                     isCollapsed ? "justify-center" : ""
                 )}>
                     <div className="flex items-center justify-center size-9 shrink-0 rounded-full bg-indigo-100 border border-indigo-200 text-indigo-600">
-                        {user?.name ? (
-                            <span className="text-sm font-bold">{user.name.charAt(0).toUpperCase()}</span>
+                        {user?.firstName ? (
+                            <span className="text-sm font-bold">{user.firstName.charAt(0).toUpperCase()}</span>
                         ) : (
                             <User className="size-5" />
                         )}
@@ -121,7 +121,7 @@ export function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
                         isCollapsed ? "opacity-0 w-0 hidden" : "opacity-100 w-auto"
                     )}>
                         <span className="text-sm font-semibold text-slate-900 truncate">
-                            {user?.name || 'Guest'}
+                            {user?.firstName || 'Guest'}
                         </span>
                         <span className="text-xs text-slate-500 truncate">
                             {user?.email || 'Not logged in'}

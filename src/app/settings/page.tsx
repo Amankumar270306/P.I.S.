@@ -12,7 +12,8 @@ export default function SettingsPage() {
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
     const [formData, setFormData] = useState({
-        username: "",
+        firstName: "",
+        lastName: "",
         phone: "",
         age: "",
         profession: ""
@@ -21,7 +22,8 @@ export default function SettingsPage() {
     useEffect(() => {
         if (user) {
             setFormData({
-                username: user.name || "",
+                firstName: user.firstName || "",
+                lastName: user.lastName || "",
                 phone: user.phone || "",
                 age: user.age?.toString() || "",
                 profession: user.profession || ""
@@ -43,7 +45,8 @@ export default function SettingsPage() {
 
         try {
             const updateData: UserUpdateDTO = {
-                username: formData.username || undefined,
+                first_name: formData.firstName || undefined,
+                last_name: formData.lastName || undefined,
                 phone: formData.phone || undefined,
                 age: formData.age ? parseInt(formData.age) : undefined,
                 profession: formData.profession || undefined
@@ -54,7 +57,8 @@ export default function SettingsPage() {
             // Update local auth context
             setUser({
                 ...user,
-                name: updatedUser.username,
+                firstName: updatedUser.first_name,
+                lastName: updatedUser.last_name,
                 phone: updatedUser.phone,
                 age: updatedUser.age,
                 profession: updatedUser.profession
@@ -93,11 +97,11 @@ export default function SettingsPage() {
                     <div className="flex items-center gap-4">
                         <div className="size-20 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border-2 border-white/30">
                             <span className="text-3xl font-bold text-white">
-                                {user?.name?.charAt(0).toUpperCase() || "U"}
+                                {user?.firstName?.charAt(0).toUpperCase() || "U"}
                             </span>
                         </div>
                         <div>
-                            <h2 className="text-xl font-semibold text-white">{user?.name || "User"}</h2>
+                            <h2 className="text-xl font-semibold text-white">{user?.firstName} {user?.lastName}</h2>
                             <p className="text-white/80 text-sm">{user?.email}</p>
                         </div>
                     </div>
@@ -108,26 +112,42 @@ export default function SettingsPage() {
                     {/* Message */}
                     {message && (
                         <div className={`p-4 rounded-lg text-sm ${message.type === 'success'
-                                ? 'bg-green-50 text-green-700 border border-green-200'
-                                : 'bg-red-50 text-red-700 border border-red-200'
+                            ? 'bg-green-50 text-green-700 border border-green-200'
+                            : 'bg-red-50 text-red-700 border border-red-200'
                             }`}>
                             {message.text}
                         </div>
                     )}
 
-                    {/* Username */}
+                    {/* First Name */}
                     <div>
                         <label className="block text-sm font-medium text-slate-700 mb-2">
                             <User className="inline size-4 mr-2" />
-                            Display Name
+                            First Name
                         </label>
                         <input
                             type="text"
-                            name="username"
-                            value={formData.username}
+                            name="firstName"
+                            value={formData.firstName}
                             onChange={handleChange}
                             className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
-                            placeholder="Your display name"
+                            placeholder="Your first name"
+                        />
+                    </div>
+
+                    {/* Last Name */}
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                            <User className="inline size-4 mr-2" />
+                            Last Name
+                        </label>
+                        <input
+                            type="text"
+                            name="lastName"
+                            value={formData.lastName}
+                            onChange={handleChange}
+                            className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                            placeholder="Your last name"
                         />
                     </div>
 

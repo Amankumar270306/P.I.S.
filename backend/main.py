@@ -58,7 +58,8 @@ def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     
     # Create user with hashed password
     db_user = models.User(
-        username=user.username,
+        first_name=user.first_name,
+        last_name=user.last_name,
         email=user.email,
         phone=user.phone,
         password=hash_password(user.password),
@@ -480,8 +481,14 @@ import chat_ws
 import uuid
 
 @app.post("/chat/users", response_model=schemas.User)
-def create_chat_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    db_user = models.User(username=user.username, avatar_url=f"https://api.dicebear.com/7.x/avataaars/svg?seed={user.username}")
+def create_chat_user(user: schemas.ChatUserCreate, db: Session = Depends(get_db)):
+    db_user = models.User(
+        first_name=user.first_name,
+        last_name=user.last_name,
+        email=f"{user.first_name.lower()}.{user.last_name.lower()}@chat.local",
+        password=hash_password("chat_default"),
+        avatar_url=f"https://api.dicebear.com/7.x/avataaars/svg?seed={user.first_name}"
+    )
     db.add(db_user)
     db.commit()
     db.refresh(db_user)

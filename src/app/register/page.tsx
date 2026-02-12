@@ -10,7 +10,8 @@ export default function RegisterPage() {
     const router = useRouter();
     const { register, isLoading } = useAuth();
 
-    const [name, setName] = useState("");
+    const [firstName, setFirstName] = useState("");
+    const [lastName, setLastName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
@@ -31,7 +32,7 @@ export default function RegisterPage() {
             return;
         }
 
-        const result = await register(email, password, name);
+        const result = await register(email, password, firstName, lastName);
         if (result.success) {
             router.push("/");
         } else {
@@ -107,19 +108,35 @@ export default function RegisterPage() {
                             </div>
                         )}
 
-                        <div className="space-y-2">
-                            <label htmlFor="name" className="block text-sm font-medium text-slate-700">
-                                Full name
-                            </label>
-                            <input
-                                id="name"
-                                type="text"
-                                value={name}
-                                onChange={(e) => setName(e.target.value)}
-                                className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
-                                placeholder="John Doe"
-                                required
-                            />
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-2">
+                                <label htmlFor="firstName" className="block text-sm font-medium text-slate-700">
+                                    First name
+                                </label>
+                                <input
+                                    id="firstName"
+                                    type="text"
+                                    value={firstName}
+                                    onChange={(e) => setFirstName(e.target.value)}
+                                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+                                    placeholder="John"
+                                    required
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label htmlFor="lastName" className="block text-sm font-medium text-slate-700">
+                                    Last name
+                                </label>
+                                <input
+                                    id="lastName"
+                                    type="text"
+                                    value={lastName}
+                                    onChange={(e) => setLastName(e.target.value)}
+                                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+                                    placeholder="Doe"
+                                    required
+                                />
+                            </div>
                         </div>
 
                         <div className="space-y-2">
