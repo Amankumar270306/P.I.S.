@@ -45,7 +45,7 @@ export function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
                 <div className="mb-6 flex items-center justify-between px-2 py-2">
                     {!isCollapsed && (
                         <h1 className="text-lg font-bold text-slate-900 leading-tight opacity-100 transition-opacity duration-300">
-                            Personal Intelligence Scheduler
+                            Energy Bar
                         </h1>
                     )}
                     <button

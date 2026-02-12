@@ -3,6 +3,6 @@ export interface CalendarEvent {
     title: string;
     startTime: Date;
     durationMinutes: number;
-    energyCost: number; // -10 to 10
+    energyCost: number; // 0.5-90 (1 point = 10 min)
     taskId?: string; // Link back to original task
 }

@@ -6,7 +6,7 @@ export interface Task {
     id: string;
     title: string;
     status: TaskStatus;
-    energyCost: number; // 1-10
+    energyCost: number; // 0.5-90 (1 point = 10 min, 90 = 15 hours)
     context: string;
     priority?: TaskPriority;
     deadline?: string;

@@ -28,7 +28,7 @@ export function SmartInput({ onCreateTask }: SmartInputProps) {
     // Additional Options
     const [startTime, setStartTime] = useState("");
     const [endTime, setEndTime] = useState("");
-    const [energyCost, setEnergyCost] = useState(5);
+    const [energyCost, setEnergyCost] = useState(3);
     const [importance, setImportance] = useState(false);
     const [isUrgent, setIsUrgent] = useState(false);
 
@@ -59,7 +59,7 @@ export function SmartInput({ onCreateTask }: SmartInputProps) {
             setParsedDate(null);
             setStartTime("");
             setEndTime("");
-            setEnergyCost(5);
+            setEnergyCost(3);
             setImportance(false);
             setIsUrgent(false);
             setShowOptions(false);
@@ -170,20 +170,21 @@ export function SmartInput({ onCreateTask }: SmartInputProps) {
                             <div className="space-y-2">
                                 <div className="flex items-center justify-between">
                                     <label className="text-xs font-medium text-slate-500 flex items-center gap-1">
-                                        <Zap className="size-3 text-yellow-500 fill-current" /> Energy Cost: {energyCost}
+                                        <Zap className="size-3 text-yellow-500 fill-current" /> Energy: {energyCost} pts ({energyCost * 10} min)
                                     </label>
                                 </div>
                                 <input
                                     type="range"
-                                    min="1"
-                                    max="10"
+                                    min="0.5"
+                                    max="12"
+                                    step="0.5"
                                     value={energyCost}
-                                    onChange={(e) => setEnergyCost(parseInt(e.target.value))}
+                                    onChange={(e) => setEnergyCost(parseFloat(e.target.value))}
                                     className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
                                 />
                                 <div className="flex justify-between text-[10px] text-slate-400 px-1">
-                                    <span>Low</span>
-                                    <span>High</span>
+                                    <span>5 min</span>
+                                    <span>2 hrs</span>
                                 </div>
                             </div>
 

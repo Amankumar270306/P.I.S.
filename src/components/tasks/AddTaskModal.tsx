@@ -19,7 +19,7 @@ const CONTEXTS = [
 export function AddTaskModal() {
     const { isTaskModalOpen, closeTaskModal } = useUI();
     const [title, setTitle] = useState("");
-    const [energy, setEnergy] = useState(5);
+    const [energy, setEnergy] = useState(3);
     const [context, setContext] = useState("deep_work");
     const [date, setDate] = useState<Date>(new Date());
 
@@ -29,7 +29,7 @@ export function AddTaskModal() {
     useEffect(() => {
         if (isTaskModalOpen) {
             setTitle("");
-            setEnergy(5);
+            setEnergy(3);
             setContext("deep_work");
             setDate(new Date());
         }
@@ -49,15 +49,15 @@ export function AddTaskModal() {
     });
 
     const getEnergyColor = (val: number) => {
-        if (val <= 3) return "bg-emerald-500";
-        if (val <= 7) return "bg-amber-500";
+        if (val <= 2) return "bg-emerald-500";
+        if (val <= 6) return "bg-amber-500";
         return "bg-rose-500";
     };
 
     const getEnergyLabel = (val: number) => {
-        if (val <= 3) return "Trivial";
-        if (val <= 7) return "Moderate";
-        return "Brain Drain";
+        const mins = val * 10;
+        if (mins < 60) return `${mins} min`;
+        return `${(mins / 60).toFixed(1)} hrs`;
     };
 
 
@@ -105,34 +105,36 @@ export function AddTaskModal() {
                             {/* Energy Slider */}
                             <div className="space-y-3">
                                 <div className="flex justify-between items-center text-sm font-medium">
-                                    <span className="text-slate-500">Energy Cost</span>
+                                    <span className="text-slate-500">Energy (1 pt = 10 min)</span>
                                     <span className={cn("px-2 py-0.5 rounded text-white text-xs", getEnergyColor(energy))}>
-                                        {energy} - {getEnergyLabel(energy)}
+                                        {energy} pts - {getEnergyLabel(energy)}
                                     </span>
                                 </div>
                                 <div className="relative h-2 bg-slate-100 rounded-full overflow-hidden">
                                     <div
                                         className={cn("absolute top-0 left-0 h-full transition-all duration-300", getEnergyColor(energy))}
-                                        style={{ width: `${(energy / 10) * 100}%` }}
+                                        style={{ width: `${(energy / 12) * 100}%` }}
                                     />
                                 </div>
                                 {/* Invisible larger hit area */}
                                 <input
                                     type="range"
-                                    min="1"
-                                    max="10"
+                                    min="0.5"
+                                    max="12"
+                                    step="0.5"
                                     value={energy}
-                                    onChange={(e) => setEnergy(parseInt(e.target.value))}
+                                    onChange={(e) => setEnergy(parseFloat(e.target.value))}
                                     className="w-full opacity-0 cursor-pointer absolute -mt-4 h-6"
                                     style={{ marginTop: '-12px', zIndex: 10 }}
                                 />
                                 {/* Visual Slider Thumb (Input) */}
                                 <input
                                     type="range"
-                                    min="1"
-                                    max="10"
+                                    min="0.5"
+                                    max="12"
+                                    step="0.5"
                                     value={energy}
-                                    onChange={(e) => setEnergy(parseInt(e.target.value))}
+                                    onChange={(e) => setEnergy(parseFloat(e.target.value))}
                                     className="w-full h-2 bg-transparent appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:border [&::-webkit-slider-thumb]:border-slate-200 [&::-webkit-slider-thumb]:mt-[-6px] relative z-20"
                                 />
                             </div>

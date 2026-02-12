@@ -51,7 +51,7 @@ class Task(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     list_id = Column(UUID(as_uuid=True), ForeignKey("task_lists.id"), nullable=True)
     title = Column(String, nullable=False)
-    energy_cost = Column(Integer, nullable=False)
+    energy_cost = Column(Float, nullable=False)  # 1 point = 10 minutes
     context = Column(String, nullable=True)
     status = Column(String, default="todo")
     priority = Column(String, default="Medium")
@@ -70,8 +70,8 @@ class EnergyLog(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     date = Column(Date, default=datetime.utcnow)
-    total_capacity = Column(Integer, default=30)
-    used_capacity = Column(Integer, default=0)
+    total_capacity = Column(Float, default=90.0)  # 90 points = 15 hours (1 point = 10 min)
+    used_capacity = Column(Float, default=0.0)
     mood_score = Column(Integer, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -93,8 +93,8 @@ class ConsistencyLog(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
     date = Column(Date, unique=True, nullable=False, default=datetime.utcnow().date)
-    energy_used = Column(Integer, default=0)
-    total_capacity = Column(Integer, default=30)
+    energy_used = Column(Float, default=0.0)
+    total_capacity = Column(Float, default=90.0)
 
 
 class LinkedTask(Base):

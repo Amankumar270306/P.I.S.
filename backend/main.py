@@ -156,7 +156,7 @@ def delete_list(list_id: uuid_module.UUID, db: Session = Depends(get_db)):
 def create_task(task: schemas.TaskCreate, db: Session = Depends(get_db)):
     """
     Creates a new task in the PIS system.
-    Checks daily energy limit (30 max) before creating.
+    Checks daily energy limit (90 points max, 1 point = 10 min) before creating.
     Returns the created task with its ID and timestamp.
     """
     today = datetime.now().date()
@@ -167,7 +167,7 @@ def create_task(task: schemas.TaskCreate, db: Session = Depends(get_db)):
     ).first()
     
     if not energy_log:
-        energy_log = models.EnergyLog(date=today, user_id=DEFAULT_USER_ID, total_capacity=30, used_capacity=0)
+        energy_log = models.EnergyLog(date=today, user_id=DEFAULT_USER_ID, total_capacity=90.0, used_capacity=0.0)
         db.add(energy_log)
         db.commit()
         db.refresh(energy_log)
@@ -198,7 +198,7 @@ def create_task(task: schemas.TaskCreate, db: Session = Depends(get_db)):
 @app.get("/tasks/", response_model=List[schemas.TaskResponse], summary="List all tasks")
 def read_tasks(
     status: Optional[str] = Query(None, description="Filter by task status (e.g., 'todo')"),
-    min_energy: Optional[int] = Query(None, description="Filter by minimum energy cost"),
+    min_energy: Optional[float] = Query(None, description="Filter by minimum energy cost"),
     list_id: Optional[uuid_module.UUID] = Query(None, description="Filter by task list ID"),
     db: Session = Depends(get_db)
 ):
@@ -228,7 +228,7 @@ def delete_task(task_id: uuid_module.UUID, db: Session = Depends(get_db)):
     return {"message": "Task deleted"}
 
 @app.patch("/tasks/{task_id}", response_model=schemas.TaskResponse, summary="Update a task")
-def update_task(task_id: int, task_update: schemas.TaskUpdate, db: Session = Depends(get_db)):
+def update_task(task_id: uuid_module.UUID, task_update: schemas.TaskUpdate, db: Session = Depends(get_db)):
     """
     Update specific fields of a task.
     """
@@ -251,7 +251,7 @@ def update_task(task_id: int, task_update: schemas.TaskUpdate, db: Session = Dep
 def get_today_energy(db: Session = Depends(get_db)):
     """
     Returns today's energy capacity and usage.
-    If no log exists for today, creates one with default 30 capacity.
+    If no log exists for today, creates one with default 90 capacity (15 hours).
     """
     today = datetime.now().date()
     
@@ -260,7 +260,7 @@ def get_today_energy(db: Session = Depends(get_db)):
     ).first()
     
     if not energy_log:
-        energy_log = models.EnergyLog(date=today, user_id=DEFAULT_USER_ID, total_capacity=30, used_capacity=0)
+        energy_log = models.EnergyLog(date=today, user_id=DEFAULT_USER_ID, total_capacity=90.0, used_capacity=0.0)
         db.add(energy_log)
         db.commit()
         db.refresh(energy_log)
@@ -275,7 +275,7 @@ def get_today_energy(db: Session = Depends(get_db)):
 @app.post("/energy/reset", summary="Reset today's energy")
 def reset_today_energy(db: Session = Depends(get_db)):
     """
-    Resets today's energy used to 0.
+    Resets today's energy used to 0 and sets capacity to 90.
     """
     today = datetime.now().date()
     
@@ -284,11 +284,12 @@ def reset_today_energy(db: Session = Depends(get_db)):
     ).first()
     
     if energy_log:
-        energy_log.used_capacity = 0
+        energy_log.used_capacity = 0.0
+        energy_log.total_capacity = 90.0  # Update to new system
         db.commit()
         db.refresh(energy_log)
     
-    return {"message": "Energy reset", "remaining": 30}
+    return {"message": "Energy reset", "remaining": 90.0}
 
 # --- AI Context Endpoint ---
 

@@ -134,16 +134,16 @@ export function ProductivityHeatmap() {
 
 
     return (
-        <div className="bg-white p-6 rounded-xl border border-slate-200/60 shadow-sm">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
-                <h3 className="text-base font-bold text-slate-800">Productivity Pulse</h3>
+        <div className="bg-white p-3 rounded-xl border border-slate-200/60 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 gap-2">
+                <h3 className="text-sm font-bold text-slate-800">Productivity Pulse</h3>
 
                 {/* Filters */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                     <select
                         value={selectedYear}
                         onChange={(e) => setSelectedYear(Number(e.target.value))}
-                        className="text-xs bg-slate-50 border-slate-200 rounded-md text-slate-600 py-1 pl-2 pr-6 focus:ring-indigo-500 focus:border-indigo-500 cursor-pointer"
+                        className="text-[10px] bg-slate-50 border-slate-200 rounded text-slate-600 py-0.5 pl-1.5 pr-4 focus:ring-indigo-500 focus:border-indigo-500 cursor-pointer"
                     >
                         {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
                     </select>
@@ -152,9 +152,9 @@ export function ProductivityHeatmap() {
                         value={selectedTrimesterIndex}
                         onChange={(e) => {
                             setSelectedTrimesterIndex(Number(e.target.value));
-                            setHighlightMonth("all"); // Reset month highlight on trimester change
+                            setHighlightMonth("all");
                         }}
-                        className="text-xs bg-slate-50 border-slate-200 rounded-md text-slate-600 py-1 pl-2 pr-6 focus:ring-indigo-500 focus:border-indigo-500 cursor-pointer"
+                        className="text-[10px] bg-slate-50 border-slate-200 rounded text-slate-600 py-0.5 pl-1.5 pr-4 focus:ring-indigo-500 focus:border-indigo-500 cursor-pointer"
                     >
                         {TRIMESTERS.map((t, i) => <option key={i} value={i}>{t.label}</option>)}
                     </select>
@@ -162,41 +162,25 @@ export function ProductivityHeatmap() {
                     <select
                         value={highlightMonth}
                         onChange={(e) => setHighlightMonth(e.target.value === "all" ? "all" : Number(e.target.value))}
-                        className="text-xs bg-slate-50 border-slate-200 rounded-md text-slate-600 py-1 pl-2 pr-6 focus:ring-indigo-500 focus:border-indigo-500 cursor-pointer"
+                        className="text-[10px] bg-slate-50 border-slate-200 rounded text-slate-600 py-0.5 pl-1.5 pr-4 focus:ring-indigo-500 focus:border-indigo-500 cursor-pointer"
                     >
                         {trimesterMonths.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
                     </select>
                 </div>
             </div>
 
-            <div className="relative overflow-x-auto pb-2 min-h-[100px]">
+            <div className="relative overflow-x-auto pb-1 min-h-[80px]">
                 {loading ? (
-                    <div className="flex items-center justify-center h-[100px] text-slate-400 text-sm">Loading activity...</div>
+                    <div className="flex items-center justify-center h-[80px] text-slate-400 text-xs">Loading activity...</div>
                 ) : (
                     <div className="flex gap-[2px]">
                         {weeks.map((week, wIndex) => (
                             <div key={wIndex} className="flex flex-col gap-[2px]">
                                 {week.map((day) => {
-                                    // Align days vertically: Mon(0) to Sun(6)? 
-                                    // date-fns getDay(): 0=Sun, 1=Mon...
-                                    // We want Mon top.
-                                    // Mon(1) -> 0
-                                    // Tue(2) -> 1
-                                    // ...
-                                    // Sun(0) -> 6
-                                    // Formula: (day.day - 1 + 7) % 7
-
-                                    // To handle empty slots if a week doesn't start on Mon (start of month)?
-                                    // The 'weeks' array logic currently packs days tightly.
-                                    // If we want a true calendar grid, we need to pad the first week.
-                                    // But for a contribution graph style, tight packing is usually fine
-                                    // UNLESS we want row alignment (Mon row, Tue row).
-                                    // To allow row alignment, we need to render specific slots.
-
                                     return (
                                         <div
                                             key={day.date.toISOString()}
-                                            className={cn("w-2.5 h-2.5", getClassName(day.energySpent, day.date))}
+                                            className={cn("w-2 h-2", getClassName(day.energySpent, day.date))}
                                             onMouseEnter={(e) => {
                                                 setHoveredDay(day);
                                                 const rect = e.currentTarget.getBoundingClientRect();
@@ -227,13 +211,13 @@ export function ProductivityHeatmap() {
                 )}
             </div>
 
-            <div className="flex items-center gap-2 text-[10px] text-slate-400 mt-3 justify-end">
+            <div className="flex items-center gap-1.5 text-[10px] text-slate-400 mt-1 justify-end">
                 <span>Less</span>
-                <div className="flex gap-1">
-                    <div className="w-2.5 h-2.5 rounded-[1px] bg-slate-100" />
-                    <div className="w-2.5 h-2.5 rounded-[1px] bg-emerald-300" />
-                    <div className="w-2.5 h-2.5 rounded-[1px] bg-emerald-500" />
-                    <div className="w-2.5 h-2.5 rounded-[1px] bg-rose-500" />
+                <div className="flex gap-0.5">
+                    <div className="w-2 h-2 rounded-[1px] bg-slate-100" />
+                    <div className="w-2 h-2 rounded-[1px] bg-emerald-300" />
+                    <div className="w-2 h-2 rounded-[1px] bg-emerald-500" />
+                    <div className="w-2 h-2 rounded-[1px] bg-rose-500" />
                 </div>
                 <span>More</span>
             </div>

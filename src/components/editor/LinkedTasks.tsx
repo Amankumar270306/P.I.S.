@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { CheckCircle2, Circle, Plus, Loader2 } from "lucide-react";
+import { CheckCircle2, Circle, Plus, Loader2, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getTasks } from "@/lib/api";
 import { Task } from "@/types/task";
@@ -9,9 +9,10 @@ import { Task } from "@/types/task";
 interface LinkedTasksProps {
     sourceType?: "email" | "document";
     sourceId?: string | null;
+    documentTitle?: string;
 }
 
-export function LinkedTasks({ sourceType, sourceId }: LinkedTasksProps) {
+export function LinkedTasks({ sourceType = "document", sourceId, documentTitle }: LinkedTasksProps) {
     const [tasks, setTasks] = useState<Task[]>([]);
     const [isLoading, setIsLoading] = useState(false);
 
@@ -25,10 +26,15 @@ export function LinkedTasks({ sourceType, sourceId }: LinkedTasksProps) {
 
             setIsLoading(true);
             try {
-                // For now, fetch all tasks - can filter by linked_email_id or linked_doc_id later
                 const allTasks = await getTasks();
-                // Filter by source type (will need backend support for proper linking)
-                setTasks(allTasks.slice(0, 5)); // Show first 5 for now
+                // Filter tasks that have this document ID in their context
+                const linkedTasks = allTasks.filter(task =>
+                    task.context && (
+                        task.context.includes(sourceId) ||
+                        (documentTitle && task.context.toLowerCase().includes(documentTitle.toLowerCase()))
+                    )
+                );
+                setTasks(linkedTasks);
             } catch (error) {
                 console.error("Failed to fetch linked tasks", error);
                 setTasks([]);
@@ -38,7 +44,7 @@ export function LinkedTasks({ sourceType, sourceId }: LinkedTasksProps) {
         };
 
         fetchLinkedTasks();
-    }, [sourceId, sourceType]);
+    }, [sourceId, sourceType, documentTitle]);
 
     const getStatusColor = (status: string) => {
         switch (status) {
@@ -63,19 +69,30 @@ export function LinkedTasks({ sourceType, sourceId }: LinkedTasksProps) {
                         <Loader2 className="size-5 animate-spin" />
                     </div>
                 ) : !sourceId ? (
-                    <div className="text-sm text-slate-400 text-center py-8">
-                        Select a {sourceType === "email" ? "email" : "document"} to see linked tasks
+                    <div className="text-center py-8">
+                        <FileText className="size-10 text-slate-300 mx-auto mb-3" />
+                        <p className="text-sm text-slate-400">
+                            Select a {sourceType === "email" ? "email" : "document"} to see linked tasks
+                        </p>
                     </div>
                 ) : tasks.length === 0 ? (
-                    <div className="text-sm text-slate-400 text-center py-8">
-                        No linked tasks
+                    <div className="text-center py-8">
+                        <div className="size-10 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-3">
+                            <CheckCircle2 className="size-5 text-slate-400" />
+                        </div>
+                        <p className="text-sm text-slate-400">
+                            No tasks linked to this {sourceType}
+                        </p>
+                        <p className="text-xs text-slate-300 mt-1">
+                            Use AI Chat to create linked tasks
+                        </p>
                     </div>
                 ) : (
                     <div className="space-y-3">
                         {tasks.map((task) => (
                             <div
                                 key={task.id}
-                                className="flex items-start gap-3 p-3 bg-white border border-slate-200 rounded-lg shadow-sm"
+                                className="flex items-start gap-3 p-3 bg-white border border-slate-200 rounded-lg shadow-sm hover:border-indigo-200 transition-colors"
                             >
                                 <div className={cn("mt-0.5", getStatusColor(task.status))}>
                                     {task.status === "done" ? <CheckCircle2 className="size-4" /> : <Circle className="size-4" />}
@@ -85,7 +102,7 @@ export function LinkedTasks({ sourceType, sourceId }: LinkedTasksProps) {
                                         {task.title}
                                     </p>
                                     <p className="text-xs text-slate-400 mt-0.5">
-                                        Energy: {task.energyCost}
+                                        {task.energyCost} pts ({task.energyCost * 10} min)
                                     </p>
                                 </div>
                             </div>
@@ -94,7 +111,10 @@ export function LinkedTasks({ sourceType, sourceId }: LinkedTasksProps) {
                 )}
             </div>
 
-            <button className="w-full py-2 text-sm text-indigo-600 font-medium border border-dashed border-indigo-200 rounded-lg hover:bg-indigo-50 transition-colors">
+            <button
+                className="w-full py-2 text-sm text-indigo-600 font-medium border border-dashed border-indigo-200 rounded-lg hover:bg-indigo-50 transition-colors"
+                disabled={!sourceId}
+            >
                 <Plus className="size-4 inline mr-1" />
                 Link Task
             </button>

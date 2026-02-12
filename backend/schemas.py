@@ -13,7 +13,7 @@ class ContextEnum(str, Enum):
 
 class TaskBase(BaseModel):
     title: str = Field(..., description="The title of the task.")
-    energy_cost: int = Field(..., ge=1, le=10, description="The cognitive load required, from 1 (Trivial) to 10 (Brain Drain).")
+    energy_cost: float = Field(..., ge=0.5, le=90, description="Energy points (1 point = 10 min). Range: 0.5-90.")
     context: Optional[str] = Field(None, description="The context or description of the task.")
     priority: Optional[str] = Field("Medium", description="Priority level: 'High', 'Medium', 'Low'.")
     deadline: Optional[datetime] = Field(None, description="The deadline for the task.")
@@ -30,7 +30,7 @@ class TaskCreate(TaskBase):
 
 class TaskUpdate(BaseModel):
     title: Optional[str] = None
-    energy_cost: Optional[int] = Field(None, ge=1, le=10)
+    energy_cost: Optional[float] = Field(None, ge=0.5, le=90)
     context: Optional[str] = None
     status: Optional[str] = None
     deadline: Optional[datetime] = None
@@ -64,7 +64,7 @@ class TaskListResponse(TaskListBase):
     model_config = ConfigDict(from_attributes=True)
 
 class SystemState(BaseModel):
-    current_energy: int = Field(..., description="Current available energy capacity.")
+    current_energy: float = Field(..., description="Current available energy points (1 point = 10 min).")
     pending_tasks: int = Field(..., description="Count of tasks in 'todo' status.")
     overdue_tasks: int = Field(..., description="Count of tasks past their deadline.")
 
@@ -125,8 +125,8 @@ class Document(DocumentBase):
 
 class ConsistencyLogBase(BaseModel):
     date: datetime
-    energy_used: int
-    total_capacity: int
+    energy_used: float
+    total_capacity: float
 
 class ConsistencyLogCreate(ConsistencyLogBase):
     user_id: uuid.UUID
@@ -161,13 +161,13 @@ class LinkedTaskResponse(LinkedTaskBase):
 # --- Integration Schemas ---
 
 class EnergyTransaction(BaseModel):
-    amount: int = Field(..., description="Energy amount to change (negative for deduction).")
+    amount: float = Field(..., description="Energy points to change (1 point = 10 min).")
     reason: str = Field(..., description="Reason for the energy change.")
 
 class IntegrationResponse(BaseModel):
     action_taken: str
     task_id: Optional[int] = None
-    new_balance: Optional[int] = None
+    new_balance: Optional[float] = None
 
 class ChatRequest(BaseModel):
     message: str

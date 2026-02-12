@@ -28,6 +28,7 @@ RULES:
 1. Output ONLY valid JSON matching the schema below
 2. Never execute actions, only classify
 3. If ambiguous, set clarification_needed=true
+4. IMPORTANT: Words like "delete", "remove", "clear" indicate DELETE action, not create!
 
 INTENTS:
 - fast_task: Simple CRUD operations (add task, delete task, list tasks, mark done, edit task)
@@ -39,7 +40,7 @@ OUTPUT SCHEMA:
 {
   "intent": "fast_task | reasoning | document | smalltalk",
   "confidence": 0.95,
-  "action": "create | update | delete | list | complete | null",
+  "action": "create | update | delete | delete_all | list | complete | null",
   "title": "extracted task title or null",
   "doc_id": "document id if mentioned or null",
   "clarification_needed": false,
@@ -49,6 +50,12 @@ OUTPUT SCHEMA:
 EXAMPLES:
 User: "Add a task to review the project docs"
 → {"intent": "fast_task", "confidence": 0.95, "action": "create", "title": "review the project docs", "doc_id": null, "clarification_needed": false, "clarification_question": null}
+
+User: "Delete all my tasks"
+→ {"intent": "fast_task", "confidence": 0.95, "action": "delete_all", "title": null, "doc_id": null, "clarification_needed": false, "clarification_question": null}
+
+User: "Remove the meeting task"
+→ {"intent": "fast_task", "confidence": 0.95, "action": "delete", "title": "meeting", "doc_id": null, "clarification_needed": false, "clarification_question": null}
 
 User: "Plan my week based on my priorities"
 → {"intent": "reasoning", "confidence": 0.9, "action": null, "title": null, "doc_id": null, "clarification_needed": false, "clarification_question": null}

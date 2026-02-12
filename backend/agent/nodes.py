@@ -47,7 +47,7 @@ Database tools available:
 
 For task creation, extract:
 - title (required)
-- energy_cost (1-10, default 5)
+- energy_cost (0.5-90, where 1 point = 10 minutes, default 3.0)
 - priority (High/Medium/Low, default Medium)
 
 OUTPUT FORMAT:
@@ -79,6 +79,8 @@ def fast_task_node(state: AgentState, db: Session) -> dict:
     Execute fast CRUD operations on tasks.
     Uses phi3:mini for speed.
     """
+    import re
+    
     set_db_session(db)
     route = state.get("route")
     user_input = state.get("user_input", "")
@@ -90,19 +92,94 @@ def fast_task_node(state: AgentState, db: Session) -> dict:
     result = ""
     
     try:
+        # If no title extracted from router, try to extract from user input
+        if action == "create" and not title:
+            # Extract task description from common patterns
+            patterns = [
+                r"(?:assign|schedule|set|add|create)\s+(?:a\s+)?(meeting|task|event|call|appointment)(?:\s+(?:of|for|with|about|to)\s+(.+?))?(?:\s+(?:from|at|on)\s+\d|$|\s+as\s+a\s+task)",
+                r"(?:add|create)\s+(?:a\s+)?(?:task|meeting|event)?\s*(?:to|for|of|:)?\s*(.+?)(?:\s+(?:from|at|on)\s+\d|$)",
+                r"(?:remind me to|i need to)\s+(.+?)(?:\s+(?:from|at|on)\s+\d|$)",
+            ]
+            for pattern in patterns:
+                match = re.search(pattern, user_input, re.IGNORECASE)
+                if match:
+                    groups = match.groups()
+                    # Combine non-None groups
+                    title_parts = [g for g in groups if g]
+                    title = " ".join(title_parts).strip() if title_parts else None
+                    break
+            
+            # Clean up title - remove time patterns from title
+            if title:
+                title = re.sub(r"\s*(from|at)\s+\d{1,2}\s*(pm|am)?\s*(to\s+\d{1,2}\s*(pm|am)?)?", "", title, flags=re.IGNORECASE).strip()
+                title = re.sub(r"\s+as\s+a\s+task.*$", "", title, flags=re.IGNORECASE).strip()
+            
+            if not title:
+                # Last fallback: use common noun from input
+                for word in ["meeting", "call", "task", "event", "appointment"]:
+                    if word in user_input.lower():
+                        title = word.capitalize()
+                        break
+            if not title:
+                title = "New Task"
+        
+        # Extract time if mentioned (e.g., "from 1 to 4", "at 2pm", "1pm-4pm")
+        start_time = None
+        end_time = None
+        time_patterns = [
+            r"from\s+(\d{1,2})\s*(?:pm|am)?\s*to\s+(\d{1,2})\s*(?:pm|am)?",
+            r"(\d{1,2})\s*(?:pm|am)?\s*-\s*(\d{1,2})\s*(?:pm|am)?",
+            r"at\s+(\d{1,2})\s*(?:pm|am)?",
+        ]
+        for pattern in time_patterns:
+            match = re.search(pattern, user_input, re.IGNORECASE)
+            if match:
+                if len(match.groups()) >= 2:
+                    start_time = int(match.group(1))
+                    end_time = int(match.group(2))
+                    # Assume PM if hour is small (like 1-4)
+                    if start_time < 12 and "am" not in user_input.lower():
+                        start_time += 12
+                    if end_time < 12 and "am" not in user_input.lower():
+                        end_time += 12
+                else:
+                    start_time = int(match.group(1))
+                    if start_time < 12 and "am" not in user_input.lower():
+                        start_time += 12
+                break
+        
         if action == "create" and title:
-            # Create task directly
+            # Build context with time info
+            context = None
+            if start_time and end_time:
+                context = f"Scheduled: {start_time}:00 - {end_time}:00"
+            elif start_time:
+                context = f"Scheduled: {start_time}:00"
+            
+            # Create task
+            today = date.today()
             new_task = models.Task(
-                title=title,
-                energy_cost=5,
+                title=title[:100],  # Limit title length
+                energy_cost=3.0,
                 priority="Medium",
                 status="todo",
-                user_id=DEFAULT_USER_ID
+                user_id=DEFAULT_USER_ID,
+                context=context,
+                scheduled_date=today if start_time else None,
+                started_at=datetime(today.year, today.month, today.day, start_time, 0) if start_time else None,
+                ended_at=datetime(today.year, today.month, today.day, end_time, 0) if end_time else None
             )
             db.add(new_task)
             db.commit()
             db.refresh(new_task)
-            result = f"✅ Task created: '{title}' (ID: {new_task.id})"
+            
+            time_str = ""
+            if start_time and end_time:
+                time_str = f" from {start_time}:00 to {end_time}:00"
+            elif start_time:
+                time_str = f" at {start_time}:00"
+            
+            result = f"✅ Task created: **{title}**{time_str}"
             
         elif action == "list":
             tasks = db.query(models.Task).filter(
@@ -119,7 +196,6 @@ def fast_task_node(state: AgentState, db: Session) -> dict:
                 result = "No pending tasks found."
                 
         elif action == "complete" and title:
-            # Find and complete task
             task = db.query(models.Task).filter(
                 models.Task.title.ilike(f"%{title}%")
             ).first()
@@ -140,20 +216,81 @@ def fast_task_node(state: AgentState, db: Session) -> dict:
                 result = f"🗑️ Deleted task: '{task.title}'"
             else:
                 result = f"Could not find task matching '{title}'"
+        
+        elif action == "delete_all" or ("delete" in user_input.lower() and "all" in user_input.lower()):
+            # Delete all tasks
+            count = db.query(models.Task).filter(
+                models.Task.user_id == DEFAULT_USER_ID
+            ).count()
+            if count > 0:
+                db.query(models.Task).filter(
+                    models.Task.user_id == DEFAULT_USER_ID
+                ).delete()
+                db.commit()
+                result = f"🗑️ Deleted all {count} tasks!"
+            else:
+                result = "No tasks to delete."
+        
+        elif action == "delete":
+            # Delete without specific title - try to extract from input
+            match = re.search(r"(?:delete|remove)\s+(?:the\s+)?(.+?)(?:\s+task)?$", user_input, re.IGNORECASE)
+            if match:
+                title = match.group(1).strip()
+                task = db.query(models.Task).filter(
+                    models.Task.title.ilike(f"%{title}%")
+                ).first()
+                if task:
+                    db.delete(task)
+                    db.commit()
+                    result = f"🗑️ Deleted task: '{task.title}'"
+                else:
+                    result = f"Could not find task matching '{title}'"
+            else:
+                result = "Please specify which task to delete, e.g., 'delete meeting task'"
+                
         else:
-            # Use LLM for complex fast tasks
-            llm = create_fast_task_llm()
-            tools_desc = "\n".join([f"- {t.name}: {t.description}" for t in ALL_TOOLS[:5]])
+            # Fallback: detect intent from keywords
+            user_lower = user_input.lower()
             
-            messages = [
-                SystemMessage(content=FAST_TASK_PROMPT.format(tools_desc=tools_desc)),
-                HumanMessage(content=user_input)
-            ]
-            response = llm.invoke(messages)
-            result = response.content
+            # Check for delete intent first
+            if any(word in user_lower for word in ["delete", "remove", "clear"]):
+                if "all" in user_lower:
+                    count = db.query(models.Task).filter(
+                        models.Task.user_id == DEFAULT_USER_ID
+                    ).count()
+                    if count > 0:
+                        db.query(models.Task).filter(
+                            models.Task.user_id == DEFAULT_USER_ID
+                        ).delete()
+                        db.commit()
+                        result = f"🗑️ Deleted all {count} tasks!"
+                    else:
+                        result = "No tasks to delete."
+                else:
+                    result = "Please specify which task to delete, or say 'delete all tasks'"
+            
+            # Check for create intent
+            elif any(word in user_lower for word in ["add", "create", "assign", "schedule"]):
+                title = re.sub(r"^(add|create|assign|schedule|set)\s+(a\s+)?(task|meeting|event)?\s*(to|for|of|:)?\s*", "", user_input, flags=re.IGNORECASE).strip()
+                if title:
+                    new_task = models.Task(
+                        title=title[:100],
+                        energy_cost=3.0,
+                        priority="Medium",
+                        status="todo",
+                        user_id=DEFAULT_USER_ID
+                    )
+                    db.add(new_task)
+                    db.commit()
+                    db.refresh(new_task)
+                    result = f"✅ Task created: **{title}**"
+                else:
+                    result = "I couldn't understand the task. Please try: 'add task [task name]'"
+            else:
+                result = "I'm not sure what you want. Try: 'add task [name]', 'list tasks', or 'delete all tasks'"
             
     except Exception as e:
-        result = f"Error executing task: {str(e)}"
+        result = f"Error: {str(e)}"
         db.rollback()
     
     return {
@@ -219,7 +356,7 @@ def reasoning_node(state: AgentState, db: Session) -> dict:
     pending_count = db.query(models.Task).filter(models.Task.status == "todo").count()
     
     energy_log = db.query(models.EnergyLog).filter(models.EnergyLog.date == today).first()
-    energy_remaining = 30 - (energy_log.used_capacity if energy_log else 0)
+    energy_remaining = 90 - (energy_log.used_capacity if energy_log else 0)
     
     llm = create_reasoning_llm()
     
@@ -247,7 +384,7 @@ def reasoning_node(state: AgentState, db: Session) -> dict:
                     new_task = models.Task(
                         title=task_data.get("title", "Untitled"),
                         priority=task_data.get("priority", "Medium"),
-                        energy_cost=task_data.get("energy", 5),
+                        energy_cost=task_data.get("energy", 3.0),
                         status="todo",
                         user_id=DEFAULT_USER_ID
                     )
@@ -376,7 +513,7 @@ def document_node(state: AgentState, db: Session) -> dict:
                     new_task = models.Task(
                         title=task_data.get("title", "Untitled"),
                         priority=task_data.get("priority", "Medium"),
-                        energy_cost=3,
+                        energy_cost=3.0,
                         status="todo",
                         user_id=DEFAULT_USER_ID,
                         context=f"From document: {doc_title}"

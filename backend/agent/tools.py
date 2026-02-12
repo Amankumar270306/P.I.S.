@@ -29,7 +29,7 @@ def get_db():
 @tool
 def create_task(
     title: Annotated[str, "The task title"],
-    energy_cost: Annotated[int, "Energy cost 1-10, default 5"] = 5,
+    energy_cost: Annotated[float, "Energy points (1 point = 10 min), default 3.0"] = 3.0,
     priority: Annotated[str, "Priority: High, Medium, or Low"] = "Medium",
     context: Annotated[Optional[str], "Additional notes"] = None,
     deadline: Annotated[Optional[str], "Deadline in ISO format"] = None,
@@ -48,7 +48,7 @@ def create_task(
         
         new_task = models.Task(
             title=title,
-            energy_cost=min(max(energy_cost, 1), 10),
+            energy_cost=min(max(energy_cost, 0.5), 90),
             priority=priority if priority in ["High", "Medium", "Low"] else "Medium",
             context=context,
             deadline=deadline_dt,
