@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from typing import List, Optional
 from datetime import datetime, timedelta
 
@@ -142,13 +143,18 @@ def get_active_user_id() -> uuid_module.UUID:
 
 @app.get("/lists/", response_model=List[schemas.TaskListResponse], summary="List all task lists")
 def read_lists(db: Session = Depends(get_db)):
-    """Get all task lists for the current user."""
-    return db.query(models.TaskList).filter(models.TaskList.user_id == get_active_user_id()).all()
+    """Get all task lists for the current user and the permanent global list."""
+    user_id = get_active_user_id()
+    return db.query(models.TaskList).filter(
+        or_(models.TaskList.user_id == user_id, models.TaskList.is_permanent == True)
+    ).all()
 
 @app.post("/lists/", response_model=schemas.TaskListResponse, summary="Create a new task list")
 def create_list(task_list: schemas.TaskListCreate, db: Session = Depends(get_db)):
-    """Create a new task list."""
-    db_list = models.TaskList(**task_list.model_dump())
+    """Create a new temporary task list."""
+    data = task_list.model_dump()
+    data["is_permanent"] = False
+    db_list = models.TaskList(**data)
     db_list.user_id = get_active_user_id()
     db.add(db_list)
     db.commit()
@@ -157,10 +163,12 @@ def create_list(task_list: schemas.TaskListCreate, db: Session = Depends(get_db)
 
 @app.delete("/lists/{list_id}", summary="Delete a task list")
 def delete_list(list_id: uuid_module.UUID, db: Session = Depends(get_db)):
-    """Delete a task list and all its tasks."""
+    """Delete a task list and all its tasks, blocked if permanent."""
     db_list = db.query(models.TaskList).filter(models.TaskList.id == list_id).first()
     if not db_list:
         raise HTTPException(status_code=404, detail="List not found")
+    if db_list.is_permanent:
+        raise HTTPException(status_code=403, detail="Permanent lists cannot be deleted")
     # Delete associated tasks
     db.query(models.Task).filter(models.Task.list_id == list_id).delete()
     db.delete(db_list)
@@ -223,14 +231,37 @@ def read_tasks(
     Retrieve a list of tasks. 
     Use query parameters to filter results for specific AI context gathering.
     """
-    query = db.query(models.Task)
+    user_id = get_active_user_id()
+    query = db.query(models.Task).filter(models.Task.user_id == user_id)
     
-    if status:
+    if list_id:
+        target_list = db.query(models.TaskList).filter(models.TaskList.id == list_id).first()
+        if target_list and target_list.is_permanent:
+            name = target_list.name.lower()
+            today_start = datetime.combine(datetime.now().date(), datetime.min.time())
+            today_end = datetime.combine(datetime.now().date(), datetime.max.time())
+            
+            if name == "today":
+                query = query.filter(
+                    (models.Task.deadline >= today_start) & (models.Task.deadline <= today_end) |
+                    (models.Task.scheduled_date >= today_start) & (models.Task.scheduled_date <= today_end)
+                )
+            elif name == "scheduled":
+                query = query.filter((models.Task.deadline != None) | (models.Task.scheduled_date != None))
+            elif name == "important":
+                query = query.filter(models.Task.importance == True)
+            elif name == "completed":
+                # Filter overriding the `status` if provided, wait, "completed" list overrides query status.
+                query = query.filter(models.Task.status == "done")
+            elif name == "all":
+                pass # Returns all user tasks
+        else:
+            query = query.filter(models.Task.list_id == list_id)
+
+    if status and not (list_id and target_list and target_list.is_permanent and target_list.name.lower() == "completed"):
         query = query.filter(models.Task.status == status)
     if min_energy:
         query = query.filter(models.Task.energy_cost >= min_energy)
-    if list_id:
-        query = query.filter(models.Task.list_id == list_id)
         
     return query.all()
 
@@ -404,43 +435,7 @@ def log_energy(payload: schemas.EnergyTransaction, db: Session = Depends(get_db)
     
     return {"action_taken": "energy_updated", "new_balance": new_balance}
 
-# --- Auto-Scheduler ---
 
-import logic.scheduler as scheduler
-from datetime import date
-
-@app.post("/schedule/auto-plan", summary="Auto-Optimize Schedule")
-def auto_plan(db: Session = Depends(get_db)):
-    """
-    AI-driven scheduling. Rearranges tasks based on energy, deadline, and priority.
-    """
-    # 1. Fetch Candidates (Todo tasks)
-    tasks = db.query(models.Task).filter(models.Task.status == "todo").all()
-    
-    # 2. Run Algorithm
-    # Mock daily limit, ideally fetch from EnergyLog
-    scheduled, backlog = scheduler.optimize_schedule(tasks, daily_limit=40)
-    
-    # 3. Apply Changes
-    today = date.today()
-    tomorrow = today + timedelta(days=1)
-    
-    for t in scheduled:
-        t.scheduled_date = today
-        db.add(t)
-        
-    for t in backlog:
-        # Push to backlog/tomorrow (or just clear scheduled_date)
-        t.scheduled_date = tomorrow
-        db.add(t)
-        
-    db.commit()
-    
-    return {
-        "scheduled_count": len(scheduled),
-        "backlog_count": len(backlog),
-        "message": "Schedule optimized successfully."
-    }
 
 # --- Consistency Graph Endpoints ---
 
@@ -477,99 +472,4 @@ def read_consistency_logs(user_id: str, db: Session = Depends(get_db)):
     """
     return db.query(models.ConsistencyLog).filter(models.ConsistencyLog.user_id == user_id).order_by(models.ConsistencyLog.date).all()
 
-# --- AI Agent Chat ---
 
-import agent.chat as agent_chat
-import uuid
-
-@app.post("/agent/chat", response_model=schemas.ChatResponse, summary="Chat with P.I.S. Agent")
-def chat_endpoint(payload: schemas.ChatRequest, db: Session = Depends(get_db)):
-    """
-    Ask the AI agent questions about your schedule or energy.
-    """
-    response_text = agent_chat.chat_with_agent(payload.message, db)
-    return {"response": response_text}
-
-# --- Team Chat Endpoints ---
-
-from fastapi import WebSocket, WebSocketDisconnect
-import chat_ws
-import uuid
-
-@app.post("/chat/users", response_model=schemas.User)
-def create_chat_user(user: schemas.ChatUserCreate, db: Session = Depends(get_db)):
-    db_user = models.User(
-        first_name=user.first_name,
-        last_name=user.last_name,
-        email=f"{user.first_name.lower()}.{user.last_name.lower()}@chat.local",
-        password=hash_password("chat_default"),
-        avatar_url=f"https://api.dicebear.com/7.x/avataaars/svg?seed={user.first_name}"
-    )
-    db.add(db_user)
-    db.commit()
-    db.refresh(db_user)
-    return db_user
-
-@app.get("/chat/users", response_model=List[schemas.User])
-def get_users(db: Session = Depends(get_db)):
-    return db.query(models.User).all()
-
-@app.get("/chat/channels", response_model=List[schemas.Channel])
-def get_channels(db: Session = Depends(get_db)):
-    # Simple implementation: Return all channels
-    # In real app: Return only channels user is part of
-    return db.query(models.Channel).all()
-
-@app.post("/chat/channels", response_model=schemas.Channel)
-def create_channel(channel: schemas.ChannelBase, db: Session = Depends(get_db)):
-    db_channel = models.Channel(name=channel.name, is_group=channel.is_group)
-    db.add(db_channel)
-    db.commit()
-    db.refresh(db_channel)
-    return db_channel
-
-@app.get("/chat/history/{channel_id}", response_model=List[schemas.Message])
-def get_chat_history(channel_id: uuid.UUID, db: Session = Depends(get_db)):
-    return db.query(models.Message).filter(models.Message.channel_id == channel_id).order_by(models.Message.created_at).all()
-
-@app.websocket("/ws/chat/{channel_id}/{user_id}")
-async def websocket_endpoint(websocket: WebSocket, channel_id: str, user_id: str, db: Session = Depends(get_db)):
-    await chat_ws.manager.connect(websocket, channel_id)
-    try:
-        while True:
-            data = await websocket.receive_json()
-            # data expects: { "content": "hello" }
-            
-            content = data.get("content")
-            if content:
-                # 1. Persist to DB
-                # Note: We need a new session context here usually for async, 
-                # but FastAPI dependency injection handles it for this scope if not async DB.
-                # Since SQLAlchemy with standard engine is blocking, we should be careful.
-                # For this prototype, we'll try direct usage. If it blocks event loop, we'd need run_in_executor.
-                
-                new_msg = models.Message(
-                    channel_id=uuid.UUID(channel_id),
-                    sender_id=uuid.UUID(user_id),
-                    content=content
-                )
-                db.add(new_msg)
-                db.commit()
-                db.refresh(new_msg)
-                
-                # 2. Broadcast with metadata
-                msg_response = {
-                    "id": str(new_msg.id),
-                    "content": new_msg.content,
-                    "sender_id": str(new_msg.sender_id),
-                    "created_at": new_msg.created_at.isoformat(),
-                    "channel_id": str(new_msg.channel_id)
-                }
-                
-                await chat_ws.manager.broadcast(msg_response, channel_id)
-                
-    except WebSocketDisconnect:
-        chat_ws.manager.disconnect(websocket, channel_id)
-    except Exception as e:
-        print(f"WS Error: {e}")
-        chat_ws.manager.disconnect(websocket, channel_id)

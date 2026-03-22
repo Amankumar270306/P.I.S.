@@ -5,7 +5,6 @@ import { Plus, Zap } from 'lucide-react';
 import { Task } from '@/types/task';
 import { TaskCard } from './TaskCard';
 import { useQueryClient } from '@tanstack/react-query';
-import { autoSchedule } from '@/lib/api';
 
 interface TaskListProps {
     initialTasks: Task[];
@@ -14,34 +13,14 @@ interface TaskListProps {
 export function TaskList({ initialTasks }: TaskListProps) {
     const queryClient = useQueryClient();
     const [tasks, setTasks] = useState<Task[]>(initialTasks);
-    const [isOptimizing, setIsOptimizing] = useState(false);
 
     const todayTasks = tasks;
-    const totalEnergy = tasks.reduce((acc, task) => acc + (task.energyCost || 0), 0);
+    const totalEnergy = tasks.reduce((acc: number, task: Task) => acc + (task.energyCost || 0), 0);
 
     // Sync state with props if parent updates
     useEffect(() => {
         setTasks(initialTasks);
     }, [initialTasks]);
-
-    const handleAutoSchedule = async () => {
-        setIsOptimizing(true);
-        try {
-            const result = await autoSchedule();
-            // In a real app, use a Toast library here. Using alert for now as requested by user context constraints or console.
-            // "Show a Toast notification" -> I don't have a toast lib installed in the summary, 
-            // but I will try to use a simple ALERT or just console log if no lib.
-            // Wait, previous instructions mentioned "toast functionality was noted as a potential next step".
-            // I'll stick to alert for visibility or just text.
-            alert(`Schedule Optimized: ${result.scheduled_count} tasks scheduled, ${result.backlog_count} moved to backlog.`);
-            queryClient.invalidateQueries({ queryKey: ['tasks'] });
-        } catch (error) {
-            console.error(error);
-            alert("Failed to optimize schedule.");
-        } finally {
-            setIsOptimizing(false);
-        }
-    };
 
     const handleAddTask = () => {
         // Implementation remains or opens modal
@@ -64,19 +43,6 @@ export function TaskList({ initialTasks }: TaskListProps) {
                     </div>
 
                     <div className="flex items-center gap-2">
-                        <button
-                            onClick={handleAutoSchedule}
-                            disabled={isOptimizing}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all
-                                ${isOptimizing
-                                    ? 'bg-purple-100 text-purple-700 cursor-wait'
-                                    : 'bg-purple-600 text-white hover:bg-purple-700 shadow-sm hover:shadow-md'
-                                }`}
-                        >
-                            <img src="https://api.iconify.design/lucide:sparkles.svg?color=white" className="size-4" alt="" />
-                            {isOptimizing ? 'Optimizing...' : 'Auto-Schedule'}
-                        </button>
-
                         <div className="flex items-center gap-2 text-sm font-medium text-slate-600 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
                             <span>Energy:</span>
                             <div className="flex items-center gap-1 text-slate-900">

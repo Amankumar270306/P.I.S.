@@ -53,6 +53,7 @@ class TaskListBase(BaseModel):
     name: str = Field(..., description="Name of the task list.")
     color: Optional[str] = Field("#6366f1", description="Color hex code for the list.")
     icon: Optional[str] = Field("list", description="Icon name for the list.")
+    is_permanent: bool = Field(False, description="Whether this list is permanent and system-prebuilt.")
 
 class TaskListCreate(TaskListBase):
     pass
@@ -171,48 +172,3 @@ class IntegrationResponse(BaseModel):
     task_id: Optional[int] = None
     new_balance: Optional[float] = None
 
-class ChatRequest(BaseModel):
-    message: str
-
-class ChatResponse(BaseModel):
-    response: str
-
-# --- Team Chat Schemas ---
-
-class ChatUserBase(BaseModel):
-    first_name: str
-    last_name: str = ""
-
-class ChatUserCreate(ChatUserBase):
-    pass
-
-class User(ChatUserBase):
-    id: uuid.UUID
-    avatar_url: Optional[str] = None
-    
-    model_config = ConfigDict(from_attributes=True)
-
-class MessageBase(BaseModel):
-    content: str
-
-class MessageCreate(MessageBase):
-    channel_id: uuid.UUID
-    sender_id: uuid.UUID
-
-class Message(MessageBase):
-    id: uuid.UUID
-    channel_id: uuid.UUID
-    sender_id: uuid.UUID
-    created_at: datetime
-    
-    model_config = ConfigDict(from_attributes=True)
-
-class ChannelBase(BaseModel):
-    name: Optional[str] = None
-    is_group: bool = False
-
-class Channel(ChannelBase):
-    id: uuid.UUID
-    last_message: Optional[Message] = None
-    
-    model_config = ConfigDict(from_attributes=True)

@@ -95,7 +95,7 @@ const api = axios.create({
 });
 
 // Attach X-User-Id header from localStorage on every request
-api.interceptors.request.use((config) => {
+api.interceptors.request.use((config: any) => {
     if (typeof window !== 'undefined') {
         const storedUser = localStorage.getItem('pis_user');
         if (storedUser) {
@@ -174,6 +174,7 @@ export interface TaskListDTO {
     color: string;
     icon: string;
     created_at: string;
+    is_permanent?: boolean;
 }
 
 export interface TaskList {
@@ -182,18 +183,20 @@ export interface TaskList {
     color: string;
     icon: string;
     createdAt: string;
+    is_permanent?: boolean;
 }
 
 // API Functions
 
 export const getTaskLists = async (): Promise<TaskList[]> => {
     const response = await api.get<TaskListDTO[]>('/lists/');
-    return response.data.map(dto => ({
+    return response.data.map((dto: TaskListDTO) => ({
         id: dto.id,
         name: dto.name,
         color: dto.color,
         icon: dto.icon,
-        createdAt: dto.created_at
+        createdAt: dto.created_at,
+        is_permanent: dto.is_permanent
     }));
 };
 
@@ -267,63 +270,7 @@ export const getSystemState = async (): Promise<SystemState> => {
     return response.data;
 };
 
-export const autoSchedule = async (): Promise<{ scheduled_count: number; backlog_count: number; message: string }> => {
-    const response = await api.post('/schedule/auto-plan');
-    return response.data;
-};
 
-export const chatAgent = async (message: string): Promise<{ response: string }> => {
-    const response = await api.post('/agent/chat', { message });
-    return response.data;
-};
-
-// --- Chat API ---
-
-export interface ChatUser {
-    id: string;
-    first_name: string;
-    last_name: string;
-    avatar_url: string;
-}
-
-export interface Channel {
-    id: string;
-    name: string;
-    is_group: boolean;
-}
-
-export interface ChatMessage {
-    id: string;
-    channel_id: string;
-    sender_id: string;
-    content: string;
-    created_at: string;
-}
-
-export const getChatUsers = async (): Promise<ChatUser[]> => {
-    const response = await api.get('/chat/users');
-    return response.data;
-};
-
-export const createChatUser = async (firstName: string, lastName: string = ''): Promise<ChatUser> => {
-    const response = await api.post('/chat/users', { first_name: firstName, last_name: lastName });
-    return response.data;
-};
-
-export const getChannels = async (): Promise<Channel[]> => {
-    const response = await api.get('/chat/channels');
-    return response.data;
-};
-
-export const createChannel = async (name: string, is_group: boolean = false): Promise<Channel> => {
-    const response = await api.post('/chat/channels', { name, is_group });
-    return response.data;
-};
-
-export const getChatHistory = async (channelId: string): Promise<ChatMessage[]> => {
-    const response = await api.get(`/chat/history/${channelId}`);
-    return response.data;
-};
 
 export default api;
 

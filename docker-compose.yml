@@ -21,10 +21,6 @@ services:
       - db
     environment:
       DATABASE_URL: postgresql://postgres:postgrespassword@db:5432/pis
-      AI_MODEL_URL: ${AI_MODEL_URL:-http://host.docker.internal:11434/v1/chat/completions}
-      AI_MODEL_NAME: ${AI_MODEL_NAME:-llama3.1:8b}
-      AI_API_KEY: ${AI_API_KEY:-}
-      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
@@ -50,7 +46,6 @@ services:
   #   command: python integrations/outlook/sync_outlook.py
   #   environment:
   #     DATABASE_URL: postgresql://postgres:postgrespassword@db:5432/pis
-  #     AI_MODEL_URL: ${AI_MODEL_URL}
   #   restart: unless-stopped
 
 volumes:

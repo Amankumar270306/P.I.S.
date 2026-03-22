@@ -42,6 +42,7 @@ class TaskList(Base):
     name = Column(String, nullable=False)
     color = Column(String, default="#6366f1")
     icon = Column(String, default="list")
+    is_permanent = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
@@ -111,33 +112,3 @@ class LinkedTask(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
-# Chat Models
-
-class Channel(Base):
-    __tablename__ = "channels"
-    
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    name = Column(String, nullable=True)
-    is_group = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-
-    messages = relationship("Message", back_populates="channel", cascade="all, delete-orphan")
-
-
-class ChannelMember(Base):
-    __tablename__ = "channel_members"
-    
-    channel_id = Column(UUID(as_uuid=True), ForeignKey("channels.id"), primary_key=True)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), primary_key=True)
-
-
-class Message(Base):
-    __tablename__ = "messages"
-    
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    channel_id = Column(UUID(as_uuid=True), ForeignKey("channels.id"))
-    sender_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
-    content = Column(String, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-
-    channel = relationship("Channel", back_populates="messages")

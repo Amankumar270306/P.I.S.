@@ -5,7 +5,6 @@ import { TaskBoard } from "@/components/tasks/TaskBoard";
 import { MatrixView } from "@/components/tasks/MatrixView";
 import { AddTaskDialog } from "@/components/tasks/AddTaskDialog";
 import { TaskListSelector } from "@/components/tasks/TaskListSelector";
-import { AllTasksTable } from "@/components/tasks/AllTasksTable";
 import { Plus, LayoutTemplate, LayoutGrid, ArrowLeft } from "lucide-react";
 import { Task } from "@/types/task";
 import { cn } from "@/lib/utils";
@@ -27,11 +26,7 @@ export default function TasksPage() {
         queryFn: () => getTaskLists()
     });
 
-    // Fetch ALL tasks (for the permanent table)
-    const { data: allTasks = [], isLoading: allTasksLoading } = useQuery({
-        queryKey: ['tasks', 'all'],
-        queryFn: () => getTasks()
-    });
+
 
     // Fetch Tasks for selected list
     const { data: tasks = [], isLoading: tasksLoading } = useQuery({
@@ -121,14 +116,7 @@ export default function TasksPage() {
     if (!selectedList) {
         return (
             <div className="max-w-6xl mx-auto py-6 px-4 space-y-6">
-                {/* Permanent All Tasks Table */}
-                <AllTasksTable
-                    tasks={allTasks}
-                    lists={lists}
-                    onTaskUpdate={handleTaskUpdate}
-                    onTaskDelete={handleTaskDelete}
-                    isLoading={allTasksLoading}
-                />
+
 
                 {/* Task List Selector */}
                 <TaskListSelector
@@ -145,14 +133,7 @@ export default function TasksPage() {
     // Show task board/matrix for selected list
     return (
         <div className="max-w-6xl mx-auto py-6 px-4 space-y-6">
-            {/* Permanent All Tasks Table */}
-            <AllTasksTable
-                tasks={allTasks}
-                lists={lists}
-                onTaskUpdate={handleTaskUpdate}
-                onTaskDelete={handleTaskDelete}
-                isLoading={allTasksLoading}
-            />
+
 
             {/* Selected List Header + Board */}
             <div className="flex flex-col" style={{ height: "calc(100vh - 500px)", minHeight: "400px" }}>
