@@ -1,16 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { TaskBoard } from "@/components/tasks/TaskBoard";
-import { MatrixView } from "@/components/tasks/MatrixView";
-import { AddTaskDialog } from "@/components/tasks/AddTaskDialog";
-import { TaskListSelector } from "@/components/tasks/TaskListSelector";
+import { TaskBoard } from "@/features/tasks/components/TaskBoard";
+import { MatrixView } from "@/features/tasks/components/MatrixView";
+import { AddTaskDialog } from "@/features/tasks/components/AddTaskDialog";
+import { TaskListSelector } from "@/features/tasks/components/TaskListSelector";
 import { Plus, LayoutTemplate, LayoutGrid, ArrowLeft } from "lucide-react";
-import { Task } from "@/types/task";
-import { cn } from "@/lib/utils";
+import { Task } from "@/shared/types/task";
+import { cn } from "@/shared/lib/utils";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getTasks, updateTask, createTask, deleteTask, getTaskLists, createTaskList, deleteTaskList, TaskList } from "@/lib/api";
+import { getTasks, updateTask, createTask, deleteTask, getTaskLists, createTaskList, deleteTaskList, TaskList } from '@/shared/lib/api/tasks';
 
 type ViewMode = 'board' | 'matrix';
 

@@ -3,13 +3,13 @@
 import { useState, useMemo } from "react";
 import { format, addDays, startOfWeek, differenceInMinutes, parseISO } from "date-fns";
 import { ChevronLeft, ChevronRight, PanelRightOpen, PanelRightClose } from "lucide-react";
-import { CalendarEvent as CalendarEventComponent } from "@/components/calendar/CalendarEvent";
-import { CalendarSidebar } from "@/components/calendar/CalendarSidebar";
-import { CalendarEvent } from "@/types/calendar";
-import { cn } from "@/lib/utils";
+import { CalendarEvent as CalendarEventComponent } from "@/features/calendar/components/CalendarEvent";
+import { CalendarSidebar } from "@/features/calendar/components/CalendarSidebar";
+import { CalendarEvent } from "@/shared/types/calendar";
+import { cn } from "@/shared/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getTasks, updateTask, deleteTask } from "@/lib/api";
-import { Task } from "@/types/task";
+import { getTasks, updateTask, deleteTask } from '@/shared/lib/api/tasks';;
+import { Task } from "@/shared/types/task";
 
 // Convert tasks with scheduled times to calendar events
 const tasksToCalendarEvents = (tasks: Task[]): CalendarEvent[] => {

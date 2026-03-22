@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import "./globals.css";
-import { AppShell } from "@/components/AppShell";
-import { FocusProvider } from "@/context/FocusContext";
-import { FocusOverlay } from "@/components/focus/FocusOverlay";
-import { UIProvider } from "@/context/UIContext";
-import { AddTaskModal } from "@/components/tasks/AddTaskModal";
+import "@/styles/globals.css";
+import { AppShell } from "@/shared/components/AppShell";
+import { FocusProvider } from "@/providers/FocusContext";
+import { FocusOverlay } from "@/features/focus/components/FocusOverlay";
+import { UIProvider } from "@/providers/UIContext";
+import { AddTaskModal } from "@/features/tasks/components/AddTaskModal";
 import Providers from "./providers";
 
 const inter = Inter({ subsets: ["latin"] });

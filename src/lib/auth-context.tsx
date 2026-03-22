@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { loginUser, registerUser, UserLoginDTO, UserCreateDTO, UserProfile } from "./api";
+import { loginUser, registerUser, UserLoginDTO, UserCreateDTO, UserProfile } from "@/shared/lib/api/auth";
 
 interface User {
     id: string;

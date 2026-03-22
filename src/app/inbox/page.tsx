@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { Panel, Group, Separator } from "react-resizable-panels";
-import { EmailList } from "@/components/inbox/EmailList";
-import { ReadingPane } from "@/components/inbox/ReadingPane";
-import { LinkedTasks } from "@/components/editor/LinkedTasks";
-import { Email } from "@/types/email";
+import { EmailList } from "@/features/inbox/components/EmailList";
+import { ReadingPane } from "@/features/inbox/components/ReadingPane";
+import { LinkedTasks } from "@/features/editor/components/LinkedTasks";
+import { Email } from "@/shared/types/email";
 
 // Empty emails - will be fetched from API in future
 const emptyEmails: Email[] = [];

@@ -1,14 +1,15 @@
 "use client";
 
-import { EnergyMeter } from "@/components/dashboard/EnergyMeter";
+import { EnergyMeter } from "@/features/dashboard/components/EnergyMeter";
 
-import { ProductivityHeatmap } from "@/components/dashboard/ProductivityHeatmap";
-import { ConsistencyGraph } from "@/components/dashboard/ConsistencyGraph";
-import { useFocus } from "@/context/FocusContext";
+import { ProductivityHeatmap } from "@/features/dashboard/components/ProductivityHeatmap";
+import { ConsistencyGraph } from "@/features/dashboard/components/ConsistencyGraph";
+import { useFocus } from "@/providers/FocusContext";
 import { useAuth } from "@/lib/auth-context";
 import { useState, useEffect } from "react";
-import { createTask, getTasks, getTodayEnergy, EnergyStatus } from "@/lib/api";
-import { Task } from "@/types/task";
+import { createTask, getTasks } from '@/shared/lib/api/tasks';
+import { getTodayEnergy, EnergyStatus } from '@/shared/lib/api/energy';;
+import { Task } from "@/shared/types/task";
 import { Circle, CheckCircle2, Clock, CalendarOff, Play, ArrowRight } from "lucide-react";
 import { isSameDay, parseISO } from "date-fns";
 

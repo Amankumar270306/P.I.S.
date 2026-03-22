@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
-import { updateUser, UserUpdateDTO, UserProfile } from "@/lib/api";
+import { updateUser, UserProfile, UserUpdateDTO } from '@/shared/lib/api/auth';
 import { User, Phone, Briefcase, Calendar, Save, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 

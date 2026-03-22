@@ -1,6 +1,6 @@
 "use client";
 
-import { ProjectMapWrapper } from "@/components/map/ProjectMap";
+import { ProjectMapWrapper } from "@/features/map/components/ProjectMap";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 

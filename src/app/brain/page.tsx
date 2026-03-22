@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Editor } from "@/components/editor/Editor";
-import { LinkedTasks } from "@/components/editor/LinkedTasks";
+import { Editor } from "@/features/editor/components/Editor";
+import { LinkedTasks } from "@/features/editor/components/LinkedTasks";
 import {
     Plus, FileText, Trash2, File, ChevronLeft,
     PanelLeftOpen, PanelLeftClose,
@@ -10,8 +10,8 @@ import {
     Home, StickyNote, PenSquare, Settings2, MessageCircle,
     PanelRightClose, PanelRightOpen, ChevronDown
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { getDocuments, createDocument, updateDocument, deleteDocument, Document } from "@/lib/api";
+import { cn } from "@/shared/lib/utils";
+import { getDocuments, createDocument, updateDocument, deleteDocument, Document } from '@/shared/lib/api/documents';;
 
 type SidebarTab = "outline" | "notes" | "chat";
 
