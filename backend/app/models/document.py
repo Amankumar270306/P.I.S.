@@ -1,5 +1,6 @@
 from sqlalchemy import Column, String, ForeignKey, DateTime, JSON
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
 import uuid
 from datetime import datetime
 from app.db.base import Base
@@ -13,3 +14,5 @@ class Document(Base):
     content = Column(JSON, default={})
     created_at = Column(DateTime, default=datetime.utcnow)
     last_edited = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = relationship("User", back_populates="documents")

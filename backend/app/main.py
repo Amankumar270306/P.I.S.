@@ -1,14 +1,22 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.db.base import Base
-from app.db.session import engine
+from app.db.session import engine, SessionLocal
 from app.api.v1.router import api_router
+from app.db.seed import seed_permanent_lists
 
 try:
     import app.models  # Ensures all models are imported before metadata creation
     Base.metadata.create_all(bind=engine)
+
+    # Seed permanent task lists on startup
+    _db = SessionLocal()
+    try:
+        seed_permanent_lists(_db)
+    finally:
+        _db.close()
 except Exception as e:
-    print("Database metadata creation skipped or failed:", e)
+    print("Database initialization skipped or failed:", e)
 
 app = FastAPI(
     title="P.I.S. AI Engine",

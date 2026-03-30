@@ -14,6 +14,7 @@ const navItems = [
     { name: 'Project Map', href: '/map', icon: Network },
     { name: 'Calendar', href: '/calendar', icon: Calendar },
     { name: 'Documents', href: '/brain', icon: FileText },
+    { name: 'Plori', href: '/plori', icon: MessageSquare },
     { name: 'Settings', href: '/settings', icon: Settings },
 ];
 

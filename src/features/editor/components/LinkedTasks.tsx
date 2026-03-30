@@ -46,11 +46,11 @@ export function LinkedTasks({ sourceType = "document", sourceId, documentTitle }
         fetchLinkedTasks();
     }, [sourceId, sourceType, documentTitle]);
 
-    const getStatusColor = (status: string) => {
-        switch (status) {
-            case "done":
+    const getStatusColor = (statusId: number) => {
+        switch (statusId) {
+            case 3:
                 return "text-green-500";
-            case "in_progress":
+            case 2:
                 return "text-indigo-500";
             default:
                 return "text-slate-300";
@@ -94,11 +94,11 @@ export function LinkedTasks({ sourceType = "document", sourceId, documentTitle }
                                 key={task.id}
                                 className="flex items-start gap-3 p-3 bg-white border border-slate-200 rounded-lg shadow-sm hover:border-indigo-200 transition-colors"
                             >
-                                <div className={cn("mt-0.5", getStatusColor(task.status))}>
-                                    {task.status === "done" ? <CheckCircle2 className="size-4" /> : <Circle className="size-4" />}
+                                <div className={cn("mt-0.5", getStatusColor(task.status_id))}>
+                                    {task.status_id === 3 ? <CheckCircle2 className="size-4" /> : <Circle className="size-4" />}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <p className={cn("text-sm font-medium truncate", task.status === "done" ? "text-slate-500 line-through" : "text-slate-700")}>
+                                    <p className={cn("text-sm font-medium truncate", task.status_id === 3 ? "text-slate-500 line-through" : "text-slate-700")}>
                                         {task.title}
                                     </p>
                                     <p className="text-xs text-slate-400 mt-0.5">

@@ -15,13 +15,13 @@ def create_task(task: TaskCreate, service: TaskService = Depends(get_task_servic
 
 @tasks_router.get("/", response_model=List[TaskResponse], summary="List all tasks")
 def read_tasks(
-    status: Optional[str] = Query(None),
+    status_id: Optional[int] = Query(None),
     min_energy: Optional[float] = Query(None),
     list_id: Optional[UUID] = Query(None),
     service: TaskService = Depends(get_task_service),
     user_id: UUID = Depends(require_auth)
 ):
-    return service.get_tasks(user_id, status, min_energy, list_id)
+    return service.get_tasks(user_id, status_id, min_energy, list_id)
 
 @tasks_router.delete("/{task_id}", summary="Delete a task")
 def delete_task(task_id: UUID, service: TaskService = Depends(get_task_service), user_id: UUID = Depends(require_auth)):

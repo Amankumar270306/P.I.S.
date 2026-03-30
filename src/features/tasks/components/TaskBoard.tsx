@@ -33,9 +33,9 @@ export function TaskBoard({ initialTasks, onTaskEdit, onTaskDelete }: TaskBoardP
     const activeTask = tasks.find(t => t.id === activeId);
 
     const columns = {
-        todo: tasks.filter(t => t.status === 'todo'),
-        in_progress: tasks.filter(t => t.status === 'in_progress'),
-        done: tasks.filter(t => t.status === 'done'),
+        todo: tasks.filter(t => t.status_id === 1),
+        in_progress: tasks.filter(t => t.status_id === 2),
+        done: tasks.filter(t => t.status_id === 3),
     };
 
     const sensors = useSensors(
@@ -57,14 +57,15 @@ export function TaskBoard({ initialTasks, onTaskEdit, onTaskDelete }: TaskBoardP
         if (!over) return;
 
         const taskId = active.id as string;
-        const newStatus = over.id as Task['status'];
+        const statusMap: Record<string, 1 | 2 | 3 | 4> = { 'todo': 1, 'in_progress': 2, 'done': 3 };
+        const newStatusId = statusMap[over.id as string];
         const task = tasks.find(t => t.id === taskId);
 
         // If dropped in same column or invalid target, do nothing
-        if (!task || task.status === newStatus) return;
+        if (!task || !newStatusId || task.status_id === newStatusId) return;
 
         // Update Task Status
-        const updatedTask = { ...task, status: newStatus };
+        const updatedTask = { ...task, status_id: newStatusId };
 
         // Update Local State
         setTasks(prev => prev.map(t => t.id === taskId ? updatedTask : t));

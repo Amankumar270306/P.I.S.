@@ -1,15 +1,15 @@
-export type TaskStatus = 'todo' | 'in_progress' | 'done';
-export type TaskContext = 'Work' | 'Personal' | 'Errand' | 'Delegated' | 'DEEP_WORK' | 'ADMIN' | 'MEETING';
-export type TaskPriority = 'high' | 'medium' | 'low';
+export type TaskStatusId = 1 | 2 | 3 | 4; // 1: todo, 2: in_progress, 3: done, 4: backlog
+export type TaskPriorityId = 1 | 2 | 3; // 1: low, 2: medium, 3: high
 
 export interface Task {
     id: string;
     title: string;
-    status: TaskStatus;
-    energyCost: number; // 0.5-90 (1 point = 10 min, 90 = 15 hours)
+    status_id: TaskStatusId;
+    energyCost: number; // 1-10
     context: string;
-    priority?: TaskPriority;
+    priority_id?: TaskPriorityId;
     deadline?: string;
+    scheduledDate?: string;
     startedAt?: string;
     endedAt?: string;
     importance?: boolean;

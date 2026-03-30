@@ -1,184 +1,195 @@
--- Enable UUID extension
-create extension if not exists "uuid-ossp";
+-- db/schema.sql
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- 1. USERS TABLE (Custom user profiles)
-create table public.users (
+-- 1. Tables Creation (Ensuring structures exist)
+CREATE TABLE IF NOT EXISTS users (
   id uuid primary key default uuid_generate_v4(),
   first_name text not null,
   last_name text not null default '',
   email text unique not null,
   phone text unique,
-  password text not null,
-  age integer,
-  profession text,
+  password_hash text not null,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
 
-alter table public.users enable row level security;
+CREATE TABLE IF NOT EXISTS user_profiles (
+  user_id uuid primary key references users(id) on delete cascade,
+  profession text,
+  birth_date date
+);
 
-create policy "Users can view their own profile" 
-on public.users for select 
-using (id = current_setting('app.user_id')::uuid);
-
-create policy "Users can update their own profile" 
-on public.users for update 
-using (id = current_setting('app.user_id')::uuid);
-
-
--- 2. TASK LISTS TABLE (Dependencies: public.users)
-create table public.task_lists (
+CREATE TABLE IF NOT EXISTS task_lists (
   id uuid primary key default uuid_generate_v4(),
-  user_id uuid references public.users(id) not null,
+  user_id uuid references users(id) on delete cascade,
   name text not null,
   color text default '#6366f1',
   icon text default 'list',
+  is_permanent boolean default false,
   created_at timestamptz default now()
 );
 
-alter table public.task_lists enable row level security;
+CREATE TABLE IF NOT EXISTS task_statuses (
+  id smallint primary key,
+  name text unique not null
+);
 
-create policy "Users can view their own lists" 
-on public.task_lists for select 
-using (user_id = current_setting('app.user_id')::uuid);
+INSERT INTO task_statuses values
+(1, 'todo'), (2, 'in_progress'), (3, 'done'), (4, 'backlog')
+ON CONFLICT (id) DO NOTHING;
 
-create policy "Users can insert their own lists" 
-on public.task_lists for insert 
-with check (user_id = current_setting('app.user_id')::uuid);
+CREATE TABLE IF NOT EXISTS task_priorities (
+  id smallint primary key,
+  name text unique not null
+);
 
-create policy "Users can update their own lists" 
-on public.task_lists for update 
-using (user_id = current_setting('app.user_id')::uuid);
+INSERT INTO task_priorities values
+(1, 'low'), (2, 'medium'), (3, 'high')
+ON CONFLICT (id) DO NOTHING;
 
-create policy "Users can delete their own lists" 
-on public.task_lists for delete 
-using (user_id = current_setting('app.user_id')::uuid);
-
-
--- 3. TASKS TABLE (Dependencies: public.users, public.task_lists)
-create table public.tasks (
+CREATE TABLE IF NOT EXISTS tasks (
   id uuid primary key default uuid_generate_v4(),
-  user_id uuid references public.users(id) not null,
-  list_id uuid references public.task_lists(id),
+  user_id uuid not null references users(id) on delete cascade,
+  list_id uuid references task_lists(id) on delete set null,
   title text not null,
   description text,
-  status text check (status in ('todo', 'in_progress', 'done', 'backlog')) default 'todo',
-  energy_cost integer check (energy_cost >= 1 and energy_cost <= 10),
-  context text, 
-  priority text check (priority in ('High', 'Medium', 'Low')) default 'Medium',
-  deadline timestamptz,
-  scheduled_date timestamptz,
-  started_at timestamptz,
-  ended_at timestamptz,
+  status_id smallint references task_statuses(id),
+  priority_id smallint references task_priorities(id),
   importance boolean default false,
   is_urgent boolean default false,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
 
-alter table public.tasks enable row level security;
+CREATE TABLE IF NOT EXISTS task_schedule (
+  task_id uuid primary key references tasks(id) on delete cascade,
+  scheduled_date timestamptz,
+  deadline timestamptz
+);
 
-create policy "Users can view their own tasks" 
-on public.tasks for select 
-using (user_id = current_setting('app.user_id')::uuid);
+CREATE TABLE IF NOT EXISTS task_execution (
+  task_id uuid primary key references tasks(id) on delete cascade,
+  started_at timestamptz,
+  ended_at timestamptz,
+  energy_cost integer check (energy_cost between 1 and 10)
+);
 
-create policy "Users can insert their own tasks" 
-on public.tasks for insert 
-with check (user_id = current_setting('app.user_id')::uuid);
-
-create policy "Users can update their own tasks" 
-on public.tasks for update 
-using (user_id = current_setting('app.user_id')::uuid);
-
-create policy "Users can delete their own tasks" 
-on public.tasks for delete 
-using (user_id = current_setting('app.user_id')::uuid);
-
-
--- 4. DOCS TABLE (Dependencies: public.users)
-create table public.docs (
+CREATE TABLE IF NOT EXISTS contexts (
   id uuid primary key default uuid_generate_v4(),
-  user_id uuid references public.users(id) not null,
+  name text unique not null
+);
+
+CREATE TABLE IF NOT EXISTS task_contexts (
+  task_id uuid references tasks(id) on delete cascade,
+  context_id uuid references contexts(id) on delete cascade,
+  primary key (task_id, context_id)
+);
+
+CREATE TABLE IF NOT EXISTS docs (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid references users(id) on delete cascade,
   title text not null,
-  content jsonb, -- Tiptap JSON content
-  last_edited timestamptz default now(),
+  content jsonb,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+CREATE TABLE IF NOT EXISTS entity_links (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid references users(id) on delete cascade,
+  source_entity text not null,
+  source_id uuid not null,
+  target_entity text not null,
+  target_id uuid not null,
+  relation_type text,
   created_at timestamptz default now()
 );
 
-alter table public.docs enable row level security;
-
-create policy "Users can view their own docs" 
-on public.docs for select 
-using (user_id = current_setting('app.user_id')::uuid);
-
-create policy "Users can insert their own docs" 
-on public.docs for insert 
-with check (user_id = current_setting('app.user_id')::uuid);
-
-create policy "Users can update their own docs" 
-on public.docs for update 
-using (user_id = current_setting('app.user_id')::uuid);
-
-create policy "Users can delete their own docs" 
-on public.docs for delete 
-using (user_id = current_setting('app.user_id')::uuid);
-
-
--- 5. ENERGY LOGS TABLE (Dependencies: public.users)
-create table public.energy_logs (
+CREATE TABLE IF NOT EXISTS energy_logs (
   id uuid primary key default uuid_generate_v4(),
-  user_id uuid references public.users(id) not null,
-  date date not null default CURRENT_DATE,
+  user_id uuid references users(id) on delete cascade,
+  date date not null,
   total_capacity integer default 90,
   used_capacity integer default 0,
-  mood_score integer check (mood_score >= 1 and mood_score <= 5),
+  mood_score integer check (mood_score between 1 and 5),
   created_at timestamptz default now(),
-
-  unique(user_id, date) -- One log per user per day
+  unique(user_id, date)
 );
 
-alter table public.energy_logs enable row level security;
+-- 2. State Mapping & Data Migration for 3NF Normalization
+-- We wrap migrations in a DO block to safely check column existence
 
-create policy "Users can view their own energy logs" 
-on public.energy_logs for select 
-using (user_id = current_setting('app.user_id')::uuid);
+DO $$ 
+BEGIN
+  -- We add new columns before moving if they don't exist yet (for older DB versions)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='tasks' AND column_name='status_id') THEN
+    ALTER TABLE tasks ADD COLUMN status_id smallint REFERENCES task_statuses(id);
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='tasks' AND column_name='priority_id') THEN
+    ALTER TABLE tasks ADD COLUMN priority_id smallint REFERENCES task_priorities(id);
+  END IF;
 
-create policy "Users can insert their own energy logs" 
-on public.energy_logs for insert 
-with check (user_id = current_setting('app.user_id')::uuid);
+  -- Task Status Normalization
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='tasks' AND column_name='status') THEN
+    UPDATE tasks SET status_id = ts.id FROM task_statuses ts WHERE tasks.status = ts.name;
+    ALTER TABLE tasks DROP COLUMN status;
+  END IF;
 
-create policy "Users can update their own energy logs" 
-on public.energy_logs for update 
-using (user_id = current_setting('app.user_id')::uuid);
+  -- Task Priority Normalization
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='tasks' AND column_name='priority') THEN
+    UPDATE tasks SET priority_id = tp.id FROM task_priorities tp WHERE tasks.priority = tp.name;
+    ALTER TABLE tasks DROP COLUMN priority;
+  END IF;
 
+  -- Default Missing Relations (Backfill if explicitly null)
+  UPDATE tasks SET status_id = 1 WHERE status_id IS NULL;
+  UPDATE tasks SET priority_id = 2 WHERE priority_id IS NULL;
 
--- 6. LINKED TASKS TABLE (Dependencies: public.users, public.docs)
-create table public.linked_tasks (
-  id uuid primary key default uuid_generate_v4(),
-  user_id uuid references public.users(id) not null,
-  title text not null,
-  description text,
-  source_type text check (source_type in ('document')) not null,
-  source_doc_id uuid references public.docs(id),
-  status text check (status in ('pending', 'converted', 'dismissed')) default 'pending',
-  created_at timestamptz default now()
-);
+  -- Task Schedule Normalization (1:1 relation offloading)
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='tasks' AND column_name='deadline') THEN
+    INSERT INTO task_schedule (task_id, deadline)
+    SELECT id, deadline FROM tasks WHERE deadline IS NOT NULL ON CONFLICT DO NOTHING;
+    ALTER TABLE tasks DROP COLUMN deadline;
+  END IF;
+  
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='tasks' AND column_name='scheduled_date') THEN
+    INSERT INTO task_schedule (task_id, scheduled_date)
+    SELECT id, scheduled_date FROM tasks WHERE scheduled_date IS NOT NULL ON CONFLICT DO NOTHING;
+    ALTER TABLE tasks DROP COLUMN scheduled_date;
+  END IF;
 
-alter table public.linked_tasks enable row level security;
+  -- Task Execution Normalization (1:1 relation offloading)
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='tasks' AND column_name='started_at') THEN
+    INSERT INTO task_execution (task_id, started_at, ended_at, energy_cost)
+    SELECT id, started_at, ended_at, COALESCE(energy_cost, 1) FROM tasks ON CONFLICT DO NOTHING;
+    ALTER TABLE tasks DROP COLUMN started_at;
+  END IF;
+  
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='tasks' AND column_name='ended_at') THEN
+     ALTER TABLE tasks DROP COLUMN ended_at;
+  END IF;
 
-create policy "Users can view their own linked tasks" 
-on public.linked_tasks for select 
-using (user_id = current_setting('app.user_id')::uuid);
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='tasks' AND column_name='energy_cost') THEN
+    ALTER TABLE tasks DROP COLUMN energy_cost;
+  END IF;
 
-create policy "Users can insert their own linked tasks" 
-on public.linked_tasks for insert 
-with check (user_id = current_setting('app.user_id')::uuid);
+  -- Task Context Normalization (M:N relation offloading for strict 3NF)
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='tasks' AND column_name='context') THEN
+    INSERT INTO contexts (name) SELECT DISTINCT context FROM tasks WHERE context IS NOT NULL AND context != '' ON CONFLICT DO NOTHING;
+    INSERT INTO task_contexts (task_id, context_id) 
+    SELECT t.id, c.id FROM tasks t JOIN contexts c ON t.context = c.name ON CONFLICT DO NOTHING;
+    ALTER TABLE tasks DROP COLUMN context;
+  END IF;
 
-create policy "Users can update their own linked tasks" 
-on public.linked_tasks for update 
-using (user_id = current_setting('app.user_id')::uuid);
+END $$;
 
-create policy "Users can delete their own linked tasks" 
-on public.linked_tasks for delete 
-using (user_id = current_setting('app.user_id')::uuid);
-
+-- 3. Seed Permanent (System) Task Lists
+-- These are smart/filter lists visible to all users (user_id IS NULL).
+INSERT INTO task_lists (name, icon, color, is_permanent, user_id) VALUES
+  ('Today',     'sun',          '#f59e0b', true, NULL),
+  ('Scheduled', 'calendar',     '#3b82f6', true, NULL),
+  ('All',       'layers',       '#8b5cf6', true, NULL),
+  ('Important', 'star',         '#ef4444', true, NULL),
+  ('Completed', 'check-circle', '#10b981', true, NULL)
+ON CONFLICT DO NOTHING;

@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import auth, users, tasks, energy, documents, direct_db
+from app.api.v1.endpoints import auth, users, tasks, energy, documents, direct_db, chat
 
 api_router = APIRouter()
 
@@ -13,3 +13,4 @@ api_router.include_router(energy.system_router, prefix="/system", tags=["system"
 api_router.include_router(energy.consistency_router, prefix="/consistency", tags=["consistency"])
 api_router.include_router(documents.router, prefix="/documents", tags=["documents"])
 api_router.include_router(direct_db.router)
+api_router.include_router(chat.router, prefix="/chat", tags=["chat"])

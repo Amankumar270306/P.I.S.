@@ -4,6 +4,7 @@ import { useState } from "react";
 import { TaskBoard } from "@/features/tasks/components/TaskBoard";
 import { MatrixView } from "@/features/tasks/components/MatrixView";
 import { AddTaskDialog } from "@/features/tasks/components/AddTaskDialog";
+import { CompletedListView } from "@/features/tasks/components/CompletedListView";
 import { TaskListSelector } from "@/features/tasks/components/TaskListSelector";
 import { Plus, LayoutTemplate, LayoutGrid, ArrowLeft } from "lucide-react";
 import { Task } from "@/shared/types/task";
@@ -136,7 +137,7 @@ export default function TasksPage() {
 
 
             {/* Selected List Header + Board */}
-            <div className="flex flex-col" style={{ height: "calc(100vh - 500px)", minHeight: "400px" }}>
+            <div className="flex flex-col h-[calc(100vh-120px)] min-h-[500px]">
                 <header className="mb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
                         <button
@@ -158,28 +159,30 @@ export default function TasksPage() {
                     </div>
                     <div className="flex items-center gap-3">
                         {/* View Switcher */}
-                        <div className="flex p-1 bg-slate-100/80 rounded-lg border border-slate-200/60">
-                            <button
-                                onClick={() => setView('board')}
-                                className={cn(
-                                    "p-1.5 rounded-md transition-all flex items-center gap-2 text-xs font-medium",
-                                    view === 'board' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
-                                )}
-                            >
-                                <LayoutTemplate className="size-3.5" />
-                                Board
-                            </button>
-                            <button
-                                onClick={() => setView('matrix')}
-                                className={cn(
-                                    "p-1.5 rounded-md transition-all flex items-center gap-2 text-xs font-medium",
-                                    view === 'matrix' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
-                                )}
-                            >
-                                <LayoutGrid className="size-3.5" />
-                                Matrix
-                            </button>
-                        </div>
+                        {selectedList.name !== 'Completed' && (
+                            <div className="flex p-1 bg-slate-100/80 rounded-lg border border-slate-200/60">
+                                <button
+                                    onClick={() => setView('board')}
+                                    className={cn(
+                                        "p-1.5 rounded-md transition-all flex items-center gap-2 text-xs font-medium",
+                                        view === 'board' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
+                                    )}
+                                >
+                                    <LayoutTemplate className="size-3.5" />
+                                    Board
+                                </button>
+                                <button
+                                    onClick={() => setView('matrix')}
+                                    className={cn(
+                                        "p-1.5 rounded-md transition-all flex items-center gap-2 text-xs font-medium",
+                                        view === 'matrix' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
+                                    )}
+                                >
+                                    <LayoutGrid className="size-3.5" />
+                                    Matrix
+                                </button>
+                            </div>
+                        )}
 
                         <button
                             onClick={() => setIsAddTaskOpen(true)}
@@ -196,6 +199,8 @@ export default function TasksPage() {
                         <div className="flex items-center justify-center h-full">
                             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
                         </div>
+                    ) : selectedList.name === 'Completed' ? (
+                        <CompletedListView tasks={tasks} onTaskUpdate={handleTaskUpdate} />
                     ) : view === 'board' ? (
                         <TaskBoard initialTasks={tasks} onTaskEdit={handleTaskUpdate} onTaskDelete={handleTaskDelete} />
                     ) : (

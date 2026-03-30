@@ -6,9 +6,9 @@ import { ProductivityHeatmap } from "@/features/dashboard/components/Productivit
 import { ConsistencyGraph } from "@/features/dashboard/components/ConsistencyGraph";
 import { useFocus } from "@/providers/FocusContext";
 import { useAuth } from "@/lib/auth-context";
-import { useState, useEffect } from "react";
-import { createTask, getTasks } from '@/shared/lib/api/tasks';
-import { getTodayEnergy, EnergyStatus } from '@/shared/lib/api/energy';;
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { createTask, getTasks, updateTask } from '@/shared/lib/api/tasks';
+import { getTodayEnergy, EnergyStatus } from '@/shared/lib/api/energy';
 import { Task } from "@/shared/types/task";
 import { Circle, CheckCircle2, Clock, CalendarOff, Play, ArrowRight } from "lucide-react";
 import { isSameDay, parseISO } from "date-fns";
@@ -16,30 +16,29 @@ import { isSameDay, parseISO } from "date-fns";
 export default function Home() {
   const { startSession } = useFocus();
   const { user } = useAuth();
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [energy, setEnergy] = useState<EnergyStatus>({ date: '', capacity: 90, used: 0, remaining: 90 });
+  const queryClient = useQueryClient();
 
-  const fetchEnergy = async () => {
-    try {
-      const data = await getTodayEnergy();
-      setEnergy(data);
-    } catch (e) {
-      console.error("Failed to fetch energy", e);
-    }
-  };
+  const { data: tasks = [] } = useQuery({
+    queryKey: ['tasks'],
+    queryFn: () => getTasks()
+  });
 
-  useEffect(() => {
-    const fetchTasks = async () => {
-      try {
-        const data = await getTasks();
-        setTasks(data);
-      } catch (e) {
-        console.error("Failed to fetch tasks", e);
+  const { data: energy = { date: '', capacity: 90, used: 0, remaining: 90 } } = useQuery({
+    queryKey: ['energy', 'today'],
+    queryFn: () => getTodayEnergy()
+  });
+
+  const updateTaskMutation = useMutation({
+      mutationFn: ({ id, updates }: { id: string; updates: Partial<Task> }) => updateTask(id, updates),
+      onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: ['tasks'] });
+          queryClient.invalidateQueries({ queryKey: ['energy', 'today'] });
       }
-    };
-    fetchTasks();
-    fetchEnergy();
-  }, []);
+  });
+
+  const handleCompleteTask = (task: Task) => {
+      updateTaskMutation.mutate({ id: task.id, updates: { status_id: 3 } });
+  };
 
   // Compute Daily Energy Stats
   const today = new Date();
@@ -54,15 +53,15 @@ export default function Home() {
     const isEndedToday = ended && isSameDay(ended, today);
 
     let isRelevant = false;
-    if (task.status === 'done') {
+    if (task.status_id === 3) {
       isRelevant = !!isEndedToday;
     } else {
-      isRelevant = !!(isDeadlineToday || isStartedToday || task.status === 'in_progress');
+      isRelevant = !!(isDeadlineToday || isStartedToday || task.status_id === 2);
     }
 
     if (isRelevant) {
       acc.planned += task.energyCost;
-      if (task.status === 'done') {
+      if (task.status_id === 3) {
         acc.completed += task.energyCost;
       }
     }
@@ -72,23 +71,22 @@ export default function Home() {
   // Filter: tasks due today with no start time (not on calendar)
   const todayStr = new Date().toISOString().split('T')[0];
   const todayUnscheduled = tasks.filter(t => {
-    if (t.status === 'done') return false;
+    if (t.status_id === 3) return false;
     if (!t.deadline) return false;
-    const deadlineDate = t.deadline.split('T')[0];
-    const isToday = deadlineDate === todayStr;
+    const isToday = isSameDay(parseISO(t.deadline), today);
     const hasNoTime = !t.startedAt;
     return isToday && hasNoTime;
   });
 
   // In-progress tasks
-  const inProgressTasks = tasks.filter(t => t.status === 'in_progress');
+  const inProgressTasks = tasks.filter(t => t.status_id === 2);
 
   // Next scheduled task today (has startedAt time, not done, deadline today, sorted by startedAt ascending)
   const now = new Date();
   const nextScheduledTask = tasks
     .filter(t => {
-      if (t.status === 'done') return false;
-      if (t.status === 'in_progress') return false;
+      if (t.status_id === 3) return false;
+      if (t.status_id === 2) return false;
       if (!t.startedAt) return false;
       const taskDate = t.deadline?.split('T')[0] || t.startedAt.split('T')[0];
       return taskDate === todayStr && new Date(t.startedAt) > now;
@@ -131,7 +129,11 @@ export default function Home() {
             ) : (
               <div className="space-y-1.5 flex-1">
                 {inProgressTasks.map(t => (
-                  <div key={t.id} className="flex items-center gap-2 p-1.5 bg-emerald-50 rounded-lg border border-emerald-100">
+                  <div 
+                    key={t.id} 
+                    onClick={() => handleCompleteTask(t)}
+                    className="flex items-center gap-2 p-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 rounded-lg cursor-pointer transition-colors"
+                  >
                     <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
                     <span className="text-xs font-medium text-emerald-800 truncate">{t.title}</span>
                   </div>
@@ -170,7 +172,7 @@ export default function Home() {
         {/* Left Column: Consistency Graph */}
         <div className="lg:col-span-2 space-y-5">
           <div className="bg-white p-5 rounded-xl border border-slate-200/60 shadow-sm">
-            <ConsistencyGraph />
+            <ConsistencyGraph tasks={tasks} />
           </div>
         </div>
 
@@ -196,9 +198,13 @@ export default function Home() {
               ) : (
                 <ul className="space-y-2">
                   {todayUnscheduled.map((t) => (
-                    <li key={t.id} className="group flex items-start gap-3 p-3 bg-white hover:bg-indigo-50/50 rounded-lg border border-slate-100 hover:border-indigo-200 transition-all shadow-sm cursor-pointer">
+                    <li 
+                      key={t.id} 
+                      onClick={() => handleCompleteTask(t)}
+                      className="group flex items-start gap-3 p-3 bg-white hover:bg-indigo-50/50 rounded-lg border border-slate-100 hover:border-indigo-200 transition-all shadow-sm cursor-pointer"
+                    >
                       <div className="mt-0.5 text-slate-300 group-hover:text-indigo-400 transition-colors">
-                        {t.status === 'in_progress' ? <CheckCircle2 className="size-4 text-indigo-500" /> : <Circle className="size-4" />}
+                        {t.status_id === 2 ? <CheckCircle2 className="size-4 text-indigo-500" /> : <Circle className="size-4" />}
                       </div>
                       <div className="min-w-0 flex-1">
                         <span className="text-slate-700 text-sm font-medium block truncate group-hover:text-indigo-700">{t.title}</span>

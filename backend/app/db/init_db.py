@@ -1,53 +1,23 @@
-import sys
 import os
-
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
 from sqlalchemy import text
-from database import engine, SessionLocal
-import models
-import uuid
+from app.db.session import engine
 
-def migrate():
-    print("Starting migration...")
+def init_db():
+    schema_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), 'db', 'schema.sql')
     
+    with open(schema_path, 'r') as f:
+        schema_sql = f.read()
+        
     with engine.connect() as conn:
-        try:
-            # For SQLite
-            if engine.dialect.name == "sqlite":
-                conn.execute(text("ALTER TABLE task_lists ADD COLUMN is_permanent BOOLEAN DEFAULT 0;"))
-            # For PostgreSQL
-            else:
-                conn.execute(text("ALTER TABLE task_lists ADD COLUMN is_permanent BOOLEAN DEFAULT FALSE;"))
-            conn.commit()
-            print("Successfully added is_permanent column.")
-        except Exception as e:
-            print(f"Column might already exist or error occurred: {e}")
-
-    # Seed the permanent task list
-    db = SessionLocal()
-    try:
-        permanent_list = db.query(models.TaskList).filter(
-            models.TaskList.name == "Permanent Tasks", 
-            models.TaskList.is_permanent == True
-        ).first()
-        if not permanent_list:
-            print("Creating default 'Permanent Tasks' list...")
-            new_list = models.TaskList(
-                id=uuid.uuid4(),
-                user_id=None,
-                name="Permanent Tasks",
-                color="#ef4444", 
-                icon="lock",
-                is_permanent=True
-            )
-            db.add(new_list)
-            db.commit()
-            print("Done seeding.")
-        else:
-            print("Permanent list already exists.")
-    finally:
-        db.close()
+        with conn.begin():
+            # Executing the raw SQL schema which includes cascades and drop tables if we add them,
+            # or simply run it directly on the empty database.
+            # To make it robust, we should drop cascade all tables first if they exist.
+            conn.execute(text("DROP SCHEMA public CASCADE; CREATE SCHEMA public;"))
+            conn.execute(text('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";'))
+            conn.execute(text(schema_sql))
+            
+    print("Database has been fully initialized with the normalized schema.")
 
 if __name__ == "__main__":
-    migrate()
+    init_db()

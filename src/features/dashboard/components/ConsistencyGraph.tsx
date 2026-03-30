@@ -14,76 +14,61 @@ interface DayReport {
     shifted: number;
 }
 
-export function ConsistencyGraph() {
-    const [tasks, setTasks] = useState<Task[]>([]);
-    const [loading, setLoading] = useState(true);
+export function ConsistencyGraph({ tasks }: { tasks: Task[] }) {
 
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const data = await getTasks();
-                setTasks(data);
-            } catch (error) {
-                console.error("Failed to fetch tasks:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchData();
-    }, []);
-
-    // Build weekly report for last 7 days
+    // Build weekly report for last 7 days optimally using O(N) bucket mapping
     const weekData: DayReport[] = useMemo(() => {
         const today = new Date();
-        const days: DayReport[] = [];
+        const daysMap = new Map<string, DayReport>();
+        const daysArr: DayReport[] = [];
 
         for (let i = 6; i >= 0; i--) {
             const day = subDays(today, i);
-            const dayStart = startOfDay(day);
-            const dayEnd = endOfDay(day);
             const dayStr = format(day, 'yyyy-MM-dd');
-
-            // Completed: tasks with status 'done' that have endedAt on this day,
-            //   OR deadline on this day and status is 'done'
-            const completed = tasks.filter(t => {
-                if (t.status !== 'done') return false;
-                // Check endedAt
-                if (t.endedAt) {
-                    const ended = new Date(t.endedAt);
-                    return isWithinInterval(ended, { start: dayStart, end: dayEnd });
-                }
-                // Fallback: check deadline date
-                if (t.deadline) {
-                    return t.deadline.split('T')[0] === dayStr;
-                }
-                return false;
-            }).length;
-
-            // Shifted: tasks that were due on this day but are not done
-            // (deadline passed but task is still todo or in_progress)
-            const shifted = tasks.filter(t => {
-                if (t.status === 'done') return false;
-                if (!t.deadline) return false;
-                const deadlineDate = t.deadline.split('T')[0];
-                return deadlineDate === dayStr && day < today;
-            }).length;
-
-            days.push({
+            const dr = {
                 date: day,
                 label: format(day, 'EEE'),
                 shortLabel: format(day, 'EEE'),
-                completed,
-                shifted,
-            });
+                completed: 0,
+                shifted: 0,
+            };
+            daysMap.set(dayStr, dr);
+            daysArr.push(dr);
         }
-        return days;
+        
+        const todayStartStr = format(today, 'yyyy-MM-dd');
+
+        // O(N) single pass over all tasks
+        tasks.forEach(t => {
+            if (t.status_id === 3) {
+                // Completed
+                let actDayStr = null;
+                if (t.endedAt) {
+                    actDayStr = t.endedAt.split('T')[0];
+                } else if (t.deadline) {
+                    actDayStr = t.deadline.split('T')[0];
+                }
+                if (actDayStr && daysMap.has(actDayStr)) {
+                    daysMap.get(actDayStr)!.completed++;
+                }
+            } else {
+                // Shifted
+                if (t.deadline) {
+                    const deadlineStr = t.deadline.split('T')[0];
+                    // If deadline is strictly earlier than today functionally and task is incomplete
+                    if (deadlineStr < todayStartStr && daysMap.has(deadlineStr)) {
+                        daysMap.get(deadlineStr)!.shifted++;
+                    }
+                }
+            }
+        });
+
+        return daysArr;
     }, [tasks]);
 
     const maxValue = Math.max(1, ...weekData.map(d => Math.max(d.completed, d.shifted)));
 
-    if (loading) {
-        return <div className="h-48 flex items-center justify-center text-slate-400 text-sm">Loading weekly data...</div>;
-    }
+
 
     return (
         <div className="w-full">

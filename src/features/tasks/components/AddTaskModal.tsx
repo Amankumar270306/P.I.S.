@@ -72,7 +72,7 @@ export function AddTaskModal() {
             energyCost: energy,
             context: selectedContext,
             deadline: date.toISOString(),
-            status: "todo"
+            status_id: 1
         });
     };
 

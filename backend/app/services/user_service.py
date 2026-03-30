@@ -17,13 +17,13 @@ class UserService:
             raise HTTPException(status_code=400, detail="Phone number already registered")
         
         user_data = user_in.model_dump()
-        user_data["password"] = hash_password(user_data["password"])
+        user_data["password_hash"] = hash_password(user_data.pop("password"))
         
         return self.repo.create(user_data)
 
     def login(self, creds: UserLogin):
         user = self.repo.get_by_email(creds.email)
-        if not user or not verify_password(creds.password, user.password):
+        if not user or not verify_password(creds.password, user.password_hash):
             raise HTTPException(status_code=401, detail="Invalid email or password")
         
         return {"user": user, "message": "Login successful"}

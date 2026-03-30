@@ -40,25 +40,27 @@ class TaskService:
             energy_log = self.energy_repo.create_energy_log(user_id, today)
             
         remaining = energy_log.total_capacity - energy_log.used_capacity
-        if task_in.energy_cost > remaining:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Not enough energy. Remaining: {remaining}, Required: {task_in.energy_cost}"
-            )
-            
+        if task_in.execution and task_in.execution.energy_cost:
+            if task_in.execution.energy_cost > remaining:
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Not enough energy. Remaining: {remaining}, Required: {task_in.execution.energy_cost}"
+                )
+                
         task_data = task_in.model_dump()
         task_data["user_id"] = user_id
         
         db_task = self.task_repo.create_task(task_data)
         
         # Deduct energy capacity
-        energy_log.used_capacity += task_in.energy_cost
-        self.energy_repo.update_energy_log(energy_log)
+        if task_in.execution and task_in.execution.energy_cost:
+            energy_log.used_capacity += task_in.execution.energy_cost
+            self.energy_repo.update_energy_log(energy_log)
         
         return db_task
 
-    def get_tasks(self, user_id: UUID, status: Optional[str] = None, min_energy: Optional[float] = None, list_id: Optional[UUID] = None):
-        return self.task_repo.get_tasks_filtered(user_id, list_id, status, min_energy)
+    def get_tasks(self, user_id: UUID, status_id: Optional[int] = None, min_energy: Optional[float] = None, list_id: Optional[UUID] = None):
+        return self.task_repo.get_tasks_filtered(user_id, list_id, status_id, min_energy)
 
     def get_task(self, task_id: UUID):
         task = self.task_repo.get_task_by_id(task_id)

@@ -1,5 +1,6 @@
 from sqlalchemy import Column, Integer, Float, ForeignKey, DateTime, Date
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
 import uuid
 from datetime import datetime
 from app.db.base import Base
@@ -14,6 +15,8 @@ class EnergyLog(Base):
     used_capacity = Column(Float, default=0.0)
     mood_score = Column(Integer, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", back_populates="energy_logs")
 
 class ConsistencyLog(Base):
     __tablename__ = "consistency_logs"

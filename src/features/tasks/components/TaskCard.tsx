@@ -33,9 +33,9 @@ export function TaskCard({ task, onEdit, onDelete }: TaskCardProps) {
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                     <div className={cn("size-2 rounded-full flex-shrink-0", {
-                        'bg-slate-300': task.status === 'todo',
-                        'bg-indigo-500': task.status === 'in_progress',
-                        'bg-green-500': task.status === 'done',
+                        'bg-slate-300': task.status_id === 1,
+                        'bg-indigo-500': task.status_id === 2,
+                        'bg-green-500': task.status_id === 3,
                     })} />
 
                     {isEditing ? (
